@@ -27,7 +27,19 @@ export class Init {
   // NOTE: This method orchestrates the initialization process. It calls createTerraformDirectories to handle the creation of Terraform directories.
   async run(): Promise<void> {
     await this.createTerraformDirectories(this.targetEnvironment, this.deploymentType, this.force)
-    console.log("Initialization completed successfully.")
+    console.log()
+    
+    console.info("👍 Initialization completed successfully 🙌.\n")
+
+    console.info(`👉 Next steps:`)
+    console.info(`==============`)
+    console.info(`  1. Review and update ".env" file`)
+    console.info(`     🎯 ${this.projectRoot}/.env\n`)
+    console.info(
+      `  2. Review and update ".env.dt.${this.targetEnvironment}" file with correct credentials and other configurations.`,
+    )
+    console.info(`     🎯 ${this.projectRoot}/.env.dt.${this.targetEnvironment}\n`)
+    console.info(`  3. Run command with "deploy" option to start the deployment for current stage environment.`)
   }
 
   // NOTE: This method creates the necessary directories for Terraform configurations based on the target environment and deployment type.
@@ -49,8 +61,8 @@ export class Init {
 
     const terraformDir = path.join(this.projectRoot, ".terraforms", targetEnvironment as string)
     const templateDir = path.join(
-      this.projectRoot,
-      "src",
+      __dirname,
+      "../",
       "templates",
       "terraforms",
       deploymentType as string,

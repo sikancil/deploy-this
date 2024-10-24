@@ -11,7 +11,9 @@ import {
   ListAccessKeysCommand,
   AttachedPolicy,
   GetUserCommand,
+  User,
 } from "@aws-sdk/client-iam"
+import _ from "lodash"
 import { loadConfig } from "../utils/config.loader"
 
 export class IAMService {
@@ -64,13 +66,34 @@ export class IAMService {
           return
         }
 
-        if (response?.Users.length === 0) {
-          console.info("No users found.")
+        const usersWithTags = _.compact(
+          await Promise.all(
+            ((response?.Users || []) as User[]).map(async (user) => {
+              const command = new GetUserCommand({ UserName: user.UserName })
+              const response = await this.iamClient?.send(command)
+              return response?.User
+            })
+          )
+        )
+
+        const serviceAccounts = usersWithTags.filter((user) =>
+          user.Tags
+            ? user?.Tags?.length > 0
+              ? user.Tags?.some(
+                  (tag) => tag.Key === "ServiceAccount" || tag.Value === "ServiceAccounts",
+                )
+              : false
+            : false
+        )
+
+        if (serviceAccounts.length === 0) {
+          console.info("No service accounts type (tag) found.")
           return
         }
-        if (response?.Users?.length > 0) {
+
+        if (serviceAccounts?.length > 0) {
           const displayUser = []
-          for await (const userInfo of response?.Users || []) {
+          for await (const userInfo of serviceAccounts || []) {
             const displayData = { ...userInfo, policies: [] }
             const policies = await this.showUserPolicies(userInfo.UserName!)
             displayData.policies = policies as never[]
