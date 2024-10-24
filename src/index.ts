@@ -38,8 +38,8 @@ program
       // Validate the target environment or use a default if not provided
       targetEnvironment =
         targetEnvironment || (await validateEnvironment(TARGET_DIR, targetEnvironment, doForce))
-      console.log()
-      console.info(`Target environment: ${targetEnvironment}\n`)
+      
+      console.info(`🌥️ Target environment: ${targetEnvironment}\n`)
 
       // Run the initialization command
       await cmdInit(targetEnvironment, deploymentType, doForce)

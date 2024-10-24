@@ -16,6 +16,11 @@ export async function run(
   // If the target environment is not provided as a command-line argument, prompt the user to enter it.
   // NOTE: This uses the prompts library to interactively ask the user for the target environment.  It validates the input to ensure it's either 'staging' or 'production'.
   if (!targetEnvironment) {
+    if (!force) {
+      console.error("Target environment is required.")
+      process.exit(1)
+    }
+    
     const response = await prompts({
       type: "text",
       name: "targetEnvironment",
