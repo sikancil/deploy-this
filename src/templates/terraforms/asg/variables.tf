@@ -1,0 +1,268 @@
+variable "project_name" {
+  description = "The name of the project"
+  type        = string
+  default     = "autoscaling"
+}
+
+variable "node_env" {
+  description = "Node environment (e.g., staging, production)"
+  type        = string
+  # default     = "staging"
+}
+
+variable "aws_profile" {
+  description = "The AWS profile to use"
+  type        = string
+  # default     = "unknown"
+}
+
+variable "aws_region" {
+  description = "The AWS region to deploy to"
+  type        = string
+  default     = "us-east-2"
+}
+
+variable "aws_access_key" {
+  description = "AWS Access Key"
+  type        = string
+  # default     = "UNKOWN AWS ACCESS KEY"
+}
+
+variable "aws_secret_key" {
+  description = "AWS Secret Key"
+  type        = string
+  # default     = "UNKOWN AWS SECRET KEY"
+}
+
+variable "bitbucket_app_password" {
+  description = "BitBucket App Password or API Key"
+  type        = string
+  # default     = "UNKOWN BITBUCKET APP PASSWORD OR API KEY"
+}
+
+variable "bitbucket_workspace" {
+  description = "BitBucket Workspace"
+  type        = string
+  # default     = "UNKOWN_BITBUCKET_WORKSPACE"
+}
+
+variable "bitbucket_branch" {
+  description = "BitBucket Branch for initial infrastructure creation or deployment"
+  type        = string
+  # default     = "UNKOWN_BITBUCKET_BRANCH"
+}
+
+variable "vpc_id" {
+  description = "The ID of the existing VPC"
+  type        = string
+  # default     = "UNKOWN_VPC_ID"
+}
+
+variable "igw_id" {
+  description = "The ID of the existing Internet Gateway"
+  type        = string
+  # default     = "UNKOWN_IGW_ID"
+}
+
+variable "ecr_repository_name" {
+  description = "The name of the ECR repository"
+  type        = string
+}
+
+# variable "subnet_ids" {
+#   description = "The IDs of the subnets to deploy to"
+#   type        = list(string)
+# }
+
+variable "ami_id" {
+  description = "The AMI ID to use for the EC2 instance (Ubuntu x64 22.04 LTS)"
+  type        = string
+  # This is the AMI ID for Ubuntu 22.04 LTS in us-east-1. Update for your region.
+  default     = "ami-0430580de6244e02e"
+}
+
+# For Auto Scaling Group require 1 or more instance types, Single Instance will use first element
+variable "instance_types" {
+  description = "List of instance types for mixed instances policy"
+  type        = list(string)
+  default     = ["t2.micro", "t2.small", "t2.medium"]
+}
+
+# AutoScaling Group Instance does required ELB/ALB which depends on SSL Certificate
+variable "ssl_certificate_arn" {
+  description = "The ARN of the SSL certificate for HTTPS listener within the LoadBalancer"
+  type        = string
+  # example: "arn:aws:acm:us-east-2:123456789012:certificate/12345678-1234-1234-1234-123456789012"
+  # default     = "UNKOWN_SSL_CERTIFICATE_ARN"
+}
+
+variable "vpc_cidr" {
+  description = "VPC CIDR"
+  type = string
+  default = "10.0.0.0/16"
+}
+
+variable "public_subnet_cidrs" {
+  description = "The CIDR blocks for the public subnets"
+  type        = list(string)
+  default     = ["10.0.1.0/24", "10.0.2.0/24"]
+}
+
+variable "availability_zones" {
+  description = "The availability zones to use"
+  type        = list(string)
+  default     = ["us-east-2a", "us-east-2b"]
+}
+
+variable "map_public_ip" {
+  description = "Specify if instances should be assigned a public IP address"
+  type        = bool
+  default     = true
+}
+
+variable "root_volume_type" {
+  description = "The type of volume for the root block device"
+  type        = string
+  default     = "gp3"
+}
+
+variable "root_volume_size" {
+  description = "The size of the volume in gigabytes for the root block device"
+  type        = number
+  default     = 30
+}
+
+variable "root_volume_encrypted" {
+  description = "Enables EBS encryption on the volume for the root block device"
+  type        = bool
+  default     = true
+}
+
+variable "app_port" {
+  description = "The port the application runs on"
+  type        = number
+  default     = 3000
+}
+
+variable "base_capacity" {
+  description = "Number of instances to launch with base instance type"
+  type        = number
+  default     = 1
+}
+
+variable "asg_desired_capacity" {
+  description = "The desired number of EC2 instances in the ASG"
+  type        = number
+  default     = 1
+}
+
+variable "asg_min_size" {
+  description = "The minimum number of EC2 instances in the ASG"
+  type        = number
+  default     = 1
+}
+
+variable "asg_max_size" {
+  description = "The maximum number of EC2 instances in the ASG"
+  type        = number
+  default     = 2
+}
+
+variable "asg_cpu_target" {
+  description = "The target CPU utilization for the ASG"
+  type        = number
+  default     = 90
+}
+
+variable "asg_ram_target" {
+  description = "The target RAM utilization for the ASG"
+  type        = number
+  default     = 97
+}
+
+variable "asg_health_check_path" {
+  description = "The path for the health check"
+  type        = string
+  default     = "/"
+}
+
+variable "asg_health_check_interval" {
+  description = "The interval for the health check"
+  type        = number
+  default     = 300
+}
+
+variable "asg_health_check_timeout" {
+  description = "The timeout for the health check"
+  type        = number
+  default     = 15
+}
+
+variable "asg_health_check_healthy_threshold" {
+  description = "The healthy threshold for the health check"
+  type        = number
+  default     = 3
+}
+
+variable "asg_health_check_unhealthy_threshold" {
+  description = "The unhealthy threshold for the health check"
+  type        = number
+  default     = 10
+}
+
+variable "asg_health_check_matcher" {
+  description = "The matcher for the health check"
+  type        = string
+  default     = "200,302,301"
+}
+
+variable "common_tags" {
+  description = "Common tags to be applied to all resources"
+  type        = map(string)
+  default = {
+    DeploymentType = "SingleInstance"
+    DeployEngine   = "DeployThis"
+  }
+}
+
+variable "health_check_path" {
+  description = "The path for the health check"
+  type        = string
+  default     = "/"
+}
+
+variable "ingress_rules" {
+  description = "List of ingress rules for the EC2 security group"
+  type = list(object({
+    description = string
+    from_port   = number
+    to_port     = number
+    protocol    = string
+    cidr_blocks = list(string)
+  }))
+  default = [
+    {
+      description = "HTTP from anywhere"
+      from_port   = 80
+      to_port     = 80
+      protocol    = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]
+    },
+    {
+      description = "HTTPS from anywhere"
+      from_port   = 443
+      to_port     = 443
+      protocol    = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]
+    },
+    {
+      description = "SSH from anywhere"
+      from_port   = 22
+      to_port     = 22
+      protocol    = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]
+    }
+  ]
+}
+
+# Add other variables as needed from the original variables.tf file
