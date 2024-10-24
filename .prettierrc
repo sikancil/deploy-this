@@ -1,0 +1,33 @@
+{
+  "semi": false,
+  "trailingComma": "all",
+  "singleQuote": false,
+  "printWidth": 100,
+  "tabWidth": 2,
+  "overrides": [
+    {
+      "files": "*.toml",
+      "options": {
+        "parser": "toml"
+      }
+    },
+    {
+      "files": "*.yaml",
+      "options": {
+        "parser": "yaml"
+      }
+    },
+    {
+      "files": "*.dockerfile",
+      "options": {
+        "parser": "docker"
+      }
+    },
+    {
+      "files": "*.sh",
+      "options": {
+        "parser": "shell"
+      }
+    }
+  ]
+}
