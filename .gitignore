@@ -2,9 +2,11 @@ __unused
 references/
 
 .env
-.env*-example
-.env*-sample
 .env.*
+!.env*-example
+!.env*-sample
+!.env.*-example
+!.env.*-sample
 
 dist/
 coverage/**/*
