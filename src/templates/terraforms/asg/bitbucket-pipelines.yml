@@ -1,0 +1,49 @@
+image: atlassian/default-image:3
+
+definitions:
+  steps:
+    - step: &build-test
+        name: Build and Test
+        script:
+          - npm install
+          - npm run build
+          - npm test
+    - step: &build-push-image
+        name: Build and Push Docker Image
+        services:
+          - docker
+        script:
+          - export IMAGE_NAME=$ECR_REPOSITORY_URL:$BITBUCKET_BRANCH-$BITBUCKET_COMMIT
+          - pip install awscli
+          - eval $(aws ecr get-login --no-include-email --region $AWS_REGION)
+          - docker build -t $IMAGE_NAME .
+          - docker push $IMAGE_NAME
+    - step: &deploy
+        name: Deploy to AWS
+        script:
+          - pipe: atlassian/aws-code-deploy:0.3.1
+            variables:
+              AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+              AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+              AWS_DEFAULT_REGION: $AWS_REGION
+              APPLICATION_NAME: $CODEDEPLOY_APPLICATION
+              DEPLOYMENT_GROUP: $CODEDEPLOY_GROUP
+              S3_BUCKET: $S3_BUCKET
+              COMMAND: 'upload'
+              VERSION_LABEL: $BITBUCKET_BRANCH-$BITBUCKET_BUILD_NUMBER
+              WAIT: 'true'
+
+pipelines:
+  branches:
+    main:
+      - step: *build-test
+      - step: *build-push-image
+      - step: *deploy
+    develop:
+      - step: *build-test
+      - step: *build-push-image
+      - step: *deploy
+
+  pull-requests:
+    '**':
+      - step: *build-test
