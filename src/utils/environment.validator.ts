@@ -29,13 +29,16 @@ export async function validateEnvironment(
   try {
     // Determine the target environment, prioritizing the provided argument, then the NODE_ENV environment variable.
     targetEnvironment = checkTargetEnvironment(TARGET_DIR, targetEnvironment, doForce)
-    checkPoint.targetEnvironment = true
+    checkPoint.targetEnvironment = !!targetEnvironment
   } catch (error) {
     console.error("Error checking target environment:", error)
     checkPoint.targetEnvironment = false
   }
   checkPoint.stage = targetEnvironment
-  console.info(`${checkPoint.targetEnvironment ? "✅" : "❌"} Target environment`)
+  console.info(
+    `${ObjectType.isEmpty(checkPoint.targetEnvironment) ? "❌" : "✅"} Target environment`,
+    checkPoint.targetEnvironment,
+  )
 
   try {
     // Check for and create the .env.dt.{environment} file if it doesn't exist and doForce is true.
@@ -75,7 +78,9 @@ export async function validateEnvironment(
 
   console.log()
 
-  return checkPoint.stage
+  return Object.values(checkPoint).some((value) => value === false) ? undefined : targetEnvironment
+
+  // return checkPoint.stage
 }
 
 // NOTE: Checks if the .env file exists in the target directory. If not and doForce is true, it creates one.
@@ -84,11 +89,11 @@ function checkEnvFile(
   TARGET_DIR: string,
   targetEnvironment: string | undefined = undefined,
   doForce: boolean = false,
-): void {
+): boolean {
   const targetEnvFile = path.join(TARGET_DIR, ".env")
   if (!fs.existsSync(targetEnvFile)) {
+    const exampleEnvFile = path.join(__dirname, "../templates/environments/.env-example")
     if (doForce) {
-      const exampleEnvFile = path.join(__dirname, "../templates/environments/.env-example")
       // If targetEnvironment is not specified, copy the example .env file. Otherwise, create a .env file with NODE_ENV set.
       if (ObjectType.isEmpty(targetEnvironment)) {
         fs.copyFileSync(exampleEnvFile, targetEnvFile)
@@ -96,9 +101,13 @@ function checkEnvFile(
         fs.writeFileSync(targetEnvFile, `NODE_ENV="${targetEnvironment}"\n`, "utf8")
       }
     } else {
-      throw new Error(".env file not found")
+      // throw new Error(".env file not found")
+      console.warn("WARN: .env file not found. Use force option -f to create one.")
+      return false
     }
   }
+
+  return true
 }
 
 // NOTE: Determines the target environment.  Prioritizes explicitly provided environment, then checks process.env.NODE_ENV,
@@ -107,7 +116,7 @@ function checkTargetEnvironment(
   TARGET_DIR: string,
   targetEnvironment: string | undefined = undefined,
   doForce: boolean = false,
-): string {
+): string | undefined {
   // Prioritize explicitly provided environment, then check process.env.NODE_ENV.
   targetEnvironment = targetEnvironment || process.env.NODE_ENV
 
@@ -117,7 +126,10 @@ function checkTargetEnvironment(
   const targetDotEnvExists = fs.existsSync(targetEnvFile)
   // If .env file doesn't exist, create it if doForce is true.
   if (!targetDotEnvExists) {
-    checkEnvFile(TARGET_DIR, targetEnvironment, doForce)
+    const checkEnvResult = checkEnvFile(TARGET_DIR, targetEnvironment, doForce)
+    if (!checkEnvResult) {
+      return
+    }
   }
 
   // If targetEnvironment is not set, read NODE_ENV from .env file.
@@ -127,7 +139,9 @@ function checkTargetEnvironment(
   }
 
   if (!nodeEnv) {
-    throw new Error("Target environment is not set")
+    // throw new Error("Target environment is not set")
+    console.error("Target environment is not set")
+    return
   }
 
   return nodeEnv
@@ -141,8 +155,12 @@ function checkDtEnvFile(
   doForce: boolean = false,
 ): boolean {
   // Determine the target environment.
-  const nodeEnv: string =
+  const nodeEnv: string | undefined =
     targetEnvironment || checkTargetEnvironment(TARGET_DIR, targetEnvironment, doForce)
+
+  if (!nodeEnv) {
+    return false
+  }
 
   const targetDtEnvFile = path.join(TARGET_DIR, `.env.dt.${nodeEnv}`)
   if (!fs.existsSync(targetDtEnvFile)) {
@@ -154,7 +172,9 @@ function checkDtEnvFile(
       // Copy the example .env.dt.stage file.
       fs.copyFileSync(exampleDtEnvFile, targetDtEnvFile)
     } else {
-      throw new Error(`.env.dt.${nodeEnv} file not found`)
+      // throw new Error(`.env.dt.${nodeEnv} file not found`)
+      console.warn(`WARN: .env.dt.${nodeEnv} file not found. Use force -f option to create one.`)
+      return false
     }
   }
 
@@ -167,8 +187,12 @@ function validateAwsCredentials(
   targetEnvironment: string | undefined = undefined,
 ): boolean {
   // Determine the target environment.
-  const nodeEnv: string =
+  const nodeEnv: string | undefined =
     targetEnvironment || checkTargetEnvironment(TARGET_DIR, targetEnvironment, false)
+
+  if (!nodeEnv) {
+    return false
+  }
 
   const targetDtEnvFile = path.join(TARGET_DIR, `.env.dt.${nodeEnv}`)
   const targetDotEnvDtExists = fs.existsSync(targetDtEnvFile)
@@ -184,7 +208,9 @@ function validateAwsCredentials(
     ObjectType.isEmpty(targetDotEnvDt.AWS_ACCESS_KEY) ||
     ObjectType.isEmpty(targetDotEnvDt.AWS_SECRET_KEY)
   ) {
-    throw new Error("AWS credentials are not set in the environment")
+    // throw new Error("AWS credentials are not set in the environment")
+    console.error("AWS credentials are not set in the environment")
+    return false
   }
 
   return true
@@ -196,8 +222,12 @@ function validateRequiredVariables(
   targetEnvironment: string | undefined = undefined,
 ): boolean {
   // Determine the target environment.
-  const nodeEnv: string =
+  const nodeEnv: string | undefined =
     targetEnvironment || checkTargetEnvironment(TARGET_DIR, targetEnvironment, false)
+
+  if (!nodeEnv) {
+    return false
+  }
 
   const dtEnvFile = path.join(TARGET_DIR, `.env.dt.${nodeEnv}`)
 
@@ -242,12 +272,22 @@ function validateRequiredVariables(
     }
   })
 
+  const checkPoint: Record<string, boolean> = {
+    missingVars: true,
+    invalidVars: true,
+    requiredVars: true,
+  }
+
   if (missingVars.length > 0) {
-    throw new Error(`Missing required environment variables: ${missingVars.join(", ")}`)
+    // throw new Error(`Missing required environment variables: ${missingVars.join(", ")}`)
+    console.error(`Missing required environment variables: ${missingVars.join(", ")}`)
+    checkPoint.missingVars = false
   }
 
   if (invalidVars.length > 0) {
-    throw new Error(`Invalid environment variables: ${invalidVars.join(", ")}`)
+    // throw new Error(`Invalid environment variables: ${invalidVars.join(", ")}`)
+    console.error(`Invalid environment variables: ${invalidVars.join(", ")}`)
+    checkPoint.invalidVars = false
   }
 
   // Additional validation for deployment-specific variables
@@ -255,11 +295,17 @@ function validateRequiredVariables(
     const asgVars = ["SSL_CERTIFICATE_ARN", "ASG_DESIRED_CAPACITY", "ASG_MIN_SIZE", "ASG_MAX_SIZE"]
     const missingAsgVars = asgVars.filter((varName) => !(varName in envConfig))
     if (missingAsgVars.length > 0) {
-      throw new Error(`Missing required ASG environment variables: ${missingAsgVars.join(", ")}`)
+      // throw new Error(`Missing required ASG environment variables: ${missingAsgVars.join(", ")}`)
+      console.error(`Missing required ASG environment variables: ${missingAsgVars.join(", ")}`)
+      checkPoint.requiredVars = false
     }
   }
 
-  return true
+  return Object.values(checkPoint).some((value) => value === false)
+    ? false
+    : true
+
+  // return true
 }
 
 // NOTE: Asynchronously validates that required tools are installed. Called by validateEnvironment.
