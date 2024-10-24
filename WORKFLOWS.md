@@ -3,22 +3,27 @@
 This document outlines the workflows for both developers and users of the DeployThis (dt) CLI tool, including detailed information about environment variables, Terraform configuration workflows, and use cases for different deployment types.
 
 ## Table of Contents
-1. [Developer Workflows](#developer-workflows)
-   - [Setting Up the Development Environment](#setting-up-the-development-environment)
-   - [Making Changes](#making-changes)
-   - [Testing](#testing)
-   - [Submitting Changes](#submitting-changes)
-   - [Terraform Configuration Workflow](#terraform-configuration-workflow)
-2. [User Workflows](#user-workflows)
-   - [Installation](#installation)
-   - [Configuration](#configuration)
-   - [Basic Usage](#basic-usage)
-   - [Advanced Usage](#advanced-usage)
-3. [Environment Variables](#environment-variables)
-4. [Deployment Types](#deployment-types)
-   - [Single Instance Deployment](#single-instance-deployment)
-   - [Auto Scaling Group (ASG) Deployment](#auto-scaling-group-asg-deployment)
-5. [Bitbucket Pipelines Integration](#bitbucket-pipelines-integration)
+- [DeployThis (dt) CLI Workflows](#deploythis-dt-cli-workflows)
+  - [Table of Contents](#table-of-contents)
+  - [Developer Workflows](#developer-workflows)
+    - [Setting Up the Development Environment](#setting-up-the-development-environment)
+    - [Making Changes](#making-changes)
+    - [Testing](#testing)
+    - [Submitting Changes](#submitting-changes)
+    - [Terraform Configuration Workflow](#terraform-configuration-workflow)
+  - [User Workflows](#user-workflows)
+    - [Installation](#installation)
+    - [Configuration](#configuration)
+    - [Basic Usage](#basic-usage)
+    - [Advanced Usage](#advanced-usage)
+  - [Environment Variables](#environment-variables)
+  - [Deployment Types](#deployment-types)
+    - [Single Instance Deployment](#single-instance-deployment)
+    - [Auto Scaling Group (ASG) Deployment](#auto-scaling-group-asg-deployment)
+  - [AWS Resource Initialization and Relationships](#aws-resource-initialization-and-relationships)
+    - [Resource Relationships](#resource-relationships)
+  - [Bitbucket Pipelines Integration](#bitbucket-pipelines-integration)
+    - [How Bitbucket Pipelines Works with AWS Resources](#how-bitbucket-pipelines-works-with-aws-resources)
 
 ## Developer Workflows
 
@@ -26,7 +31,7 @@ This document outlines the workflows for both developers and users of the Deploy
 
 1. Clone the repository:
    ```
-   git clone https://github.com/your-repo/deploy-this.git
+   git clone https://github.com/sikancil/deploy-this.git
    cd deploy-this
    ```
 

@@ -27,7 +27,7 @@ DeployThis (dt) is a powerful Command Line Interface (CLI) tool designed to stre
 
 1. Clone the repository:
    ```
-   git clone https://github.com/your-repo/deploy-this.git
+   git clone https://github.com/sikancil/deploy-this.git
    cd deploy-this
    ```
 
