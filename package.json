@@ -20,8 +20,7 @@
     "tf:plan": "cd src/templates/terraforms && terraform plan",
     "tf:apply": "cd src/templates/terraforms && terraform apply",
     "tf:destroy": "cd src/templates/terraforms && terraform destroy",
-    "prepack": "npm run build",
-    "postinstall": "npm run build"
+    "prepack": "npm run build"
   },
   "keywords": [
     "aws",
@@ -39,7 +38,7 @@
   "devDependencies": {
     "@types/jest": "^29.5.3",
     "@types/lodash": "^4.17.12",
-    "@types/node": "^20.4.5",
+    "@types/node": "^20.17.0",
     "@types/prompts": "^2.4.9",
     "@typescript-eslint/eslint-plugin": "^6.2.0",
     "@typescript-eslint/parser": "^6.2.0",
@@ -57,13 +56,13 @@
     "@aws-sdk/client-ec2": "^3.677.0",
     "@aws-sdk/client-ecr": "^3.370.0",
     "@aws-sdk/client-iam": "^3.677.0",
-    "dotenv": "^16.4.5",
     "axios": "^1.4.0",
+    "chmod-cli": "^2.0.1",
     "commander": "^11.0.0",
     "compare-versions": "^6.1.1",
+    "dotenv": "^16.4.5",
     "lodash": "^4.17.21",
     "prompts": "^2.4.2",
-    "chmod-cli": "^2.0.1",
     "rimraf": "^4.4.1",
     "typescript": "^5.1.6"
   }
