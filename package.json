@@ -2,10 +2,10 @@
   "name": "deploy-this",
   "version": "1.0.0",
   "description": "A CLI tool for automating AWS infrastructure deployment and Bitbucket pipeline configuration",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "bin": {
-    "dt": "./dist/index.js"
+    "iodt": "./dist/index.js"
   },
   "scripts": {
     "build": "rimraf ./dist/ && tsc && chmod-cli ./dist/index.js -m 0o755",
