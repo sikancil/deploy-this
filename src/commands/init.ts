@@ -1,4 +1,5 @@
 // Import the Init service from the services directory. This service handles the actual initialization logic.
+import { ValidateEnvironment } from "../services/validate"
 import { Init } from "../services/init"
 // Import the prompts library for user interaction.  This allows the command to prompt the user for input.
 import prompts from "prompts"
@@ -13,6 +14,13 @@ export async function run(
   // Get the current working directory, which is assumed to be the root of the project.
   const projectRoot = process.cwd()
 
+  // Validate the target environment or use a default if not provided
+  const validateEnvironment = new ValidateEnvironment(projectRoot)
+  targetEnvironment =
+    targetEnvironment || (await validateEnvironment.validates(projectRoot, targetEnvironment, force))
+
+  console.info(`🌥️ Target environment: ${targetEnvironment}\n`)
+
   // If the target environment is not provided as a command-line argument, prompt the user to enter it.
   // NOTE: This uses the prompts library to interactively ask the user for the target environment.  It validates the input to ensure it's either 'staging' or 'production'.
   if (!targetEnvironment) {
@@ -20,7 +28,7 @@ export async function run(
       console.error("Target environment is required.")
       process.exit(1)
     }
-    
+
     const response = await prompts({
       type: "text",
       name: "targetEnvironment",

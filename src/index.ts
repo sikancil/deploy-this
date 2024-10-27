@@ -2,7 +2,6 @@
 
 // Import necessary modules
 import { Command } from "commander"
-import { validateEnvironment } from "./utils/environment.validator"
 import { handleError } from "./utils/error.handler"
 import { run as cmdInit } from "./commands/init"
 import { run as cmdDeploy } from "./commands/deploy"
@@ -35,12 +34,6 @@ program
     // Determine if the force flag is set
     const doForce = args?.force === true
     try {
-      // Validate the target environment or use a default if not provided
-      targetEnvironment =
-        targetEnvironment || (await validateEnvironment(TARGET_DIR, targetEnvironment, doForce))
-      
-      console.info(`🌥️ Target environment: ${targetEnvironment}\n`)
-
       // Run the initialization command
       await cmdInit(targetEnvironment, deploymentType, doForce)
     } catch (error) {
