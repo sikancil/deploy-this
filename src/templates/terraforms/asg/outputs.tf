@@ -56,3 +56,15 @@ output "codedeploy_deployment_group_name" {
   description = "The name of the CodeDeploy deployment group"
   value       = aws_codedeploy_deployment_group.app_dg.deployment_group_name
 }
+
+output "instance_ids" {
+  # NOTE: This output provides a list of IDs of the EC2 instances created in 'instance.tf'.
+  description = "A list of IDs of the EC2 instances"
+  value       = aws_instance.vm_instance.*.id
+}
+
+output "public_ips" {
+  # NOTE: This output provides a list of public IP addresses of the EC2 instances created in 'instance.tf'.
+  description = "A list of public IP addresses of the EC2 instances"
+  value       = aws_instance.vm_instance.*.public_ip
+}

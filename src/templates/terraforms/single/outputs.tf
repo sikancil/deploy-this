@@ -1,7 +1,19 @@
+output "aws_region" {
+  # NOTE: This output provides the AWS region where the resources were created.
+  description = "The AWS region"
+  value       = var.aws_region
+}
+
 output "vpc_id" {
   # NOTE: This output provides the ID of the VPC created or referenced in the 'main.tf' file.
   description = "The ID of the VPC"
   value       = aws_vpc.VPC.id
+}
+
+output "internet_gateway_id" {
+  # NOTE: This output provides the ID of the Internet Gateway created or referenced in the 'main.tf' file.
+  description = "The ID of the Internet Gateway"
+  value       = aws_internet_gateway.InternetGateway.id
 }
 
 output "subnet_id" {
