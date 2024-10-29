@@ -10,17 +10,17 @@ import { run as cmdValidate } from "./commands/validate"
 import { run as cmdStatus } from "./commands/status"
 import { run as cmdRollback } from "./commands/rollback"
 import { run as cmdIAM } from "./commands/iam"
+import { run as cmdVersion } from "./commands/version"
 
 // Create a new command-line interface (CLI) program
 const program = new Command()
 // Set the current working directory as the target directory
 const TARGET_DIR = process.cwd()
 
-// Configure the CLI program
 program
   .name("dt")
   .description("DeployThis (dt) CLI for AWS infrastructure deployment")
-  .version("1.0.0", "-v, --version")
+  .version(cmdVersion(), "-v, --version")
 
 // Define the 'init' command for initializing project configuration
 // NOTE: This command initializes the project configuration based on the provided target environment and deployment type.
