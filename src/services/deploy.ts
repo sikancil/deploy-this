@@ -3,6 +3,11 @@ import * as path from "node:path"
 import { execSync } from "node:child_process"
 import dotenv from "dotenv"
 import prompts from "prompts"
+import {
+  EC2Client,
+  DescribeVpcsCommand,
+  DescribeInternetGatewaysCommand,
+} from "@aws-sdk/client-ec2"
 import { TFState } from "../interfaces/tfstate"
 import { ObjectType } from "../utils/object"
 
@@ -18,19 +23,26 @@ export class Deploy {
   private enVars: { [key: string]: string }
   private tfVars: string[]
 
+  private optCreateNewVpc: boolean
+
   // Constructor initializes the Deploy class with the target environment.
   // NOTE: It sets the project root directory, target environment, and initializes other properties.
-  constructor(targetEnvironment: string) {
+  constructor(targetEnvironment: string, createNewVpc: boolean = false) {
     this.projectRoot = process.cwd()
     this.targetEnvironment = targetEnvironment
     this.terraformDir = ""
     this.enVars = {}
     this.tfVars = []
+
+    this.optCreateNewVpc = createNewVpc
   }
 
   // run method orchestrates the entire deployment process.
   // NOTE: It handles environment variable checks, Terraform initialization, resource import, plan generation, and application.
-  async run(): Promise<void> {
+  async run(): Promise<{
+    vpcId?: string | null | undefined
+    igwId?: string | null | undefined
+  }> {
     // If targetEnvironment is not provided, it prompts the user to select one.
     if (!this.targetEnvironment) {
       this.targetEnvironment = await this.selectTargetEnvironment()
@@ -57,38 +69,139 @@ export class Deploy {
       // Initializes Terraform.
       this.runInit()
 
-      // Checks the Terraform state for existing resources.
-      const { tfStateExists, vpcExists, igwExists } = this.checkTfState()
+      // Get current VPC and IGW IDs from Terraform state
+      const checkTfStateResult = this.checkTfState()
 
-      // If Terraform state exists, it skips importing existing resources unless they are missing.
-      if (tfStateExists) {
-        console.info("Terraform state file found. Skipping import of existing resources.")
+      try {
+        // When Terraform state file does not exists, import existing resources..
+        if (!checkTfStateResult.tfStateExists) {
+          console.info("❓ Terraform state file not exists. Importing resources..")
 
-        // Imports existing VPC if it's not already managed by Terraform state.
-        if (ObjectType.isEmpty(vpcExists)) {
-          console.info("💡 Importing existing VPC...")
-          this.runImport(`aws_vpc.VPC "${this.enVars.VPC_ID}"`)
+          // Imports existing VPC if it's not already managed by Terraform state.
+          if (ObjectType.isEmpty(checkTfStateResult.vpcExists)) {
+            console.info("💡 Importing existing VPC...")
+            this.runImport(`aws_vpc.VPC "${this.enVars.VPC_ID}"`)
+          } else {
+            console.warn("🌪️ Skip importing VPC, seems already managed by Terraform state.")
+          }
+
+          // Imports existing IGW if it's not already managed by Terraform state.
+          if (ObjectType.isEmpty(checkTfStateResult.igwExists)) {
+            console.info("💡 Importing existing IGW...")
+            this.runImport(`aws_internet_gateway.InternetGateway "${this.enVars.IGW_ID}"`)
+          } else {
+            console.warn("🌪️ Skip importing IGW, seems already managed by Terraform state.")
+          }
         } else {
-          console.warn("🌪️ Skip importing VPC, seems already managed by Terraform state.")
+          // If Terraform state exists, it skips importing existing resources unless they are missing.
+          console.info("✅ Terraform state file found. Skipping import of existing resources.")
+          console.info("🌪️ Skip importing VPC, seems already managed by Terraform state.")
+          console.info("🌪️ Skip importing IGW, seems already managed by Terraform state.")
+
+          // WHen Terraform state file exists, compare with values defined in .env.dt.{targetEnvironment}
+          let vpcConfigInvalid = false
+          let igwConfigInvalid = false
+          if (checkTfStateResult.vpcExists !== this.enVars.VPC_ID) {
+            console.warn(
+              "❗️ Terraform State has VPC ID (${checkTfStateResult.vpcExists}) different than configured with ${this.enVars.VPC_ID}",
+            )
+            vpcConfigInvalid = true
+          }
+
+          if (checkTfStateResult.igwExists !== this.enVars.IGW_ID) {
+            console.warn(
+              "❗️ Terraform State has IGW ID (${checkTfStateResult.igwExists}) different than configured with ${this.enVars.IGW_ID}",
+            )
+            igwConfigInvalid = true
+          }
+
+          if (vpcConfigInvalid || igwConfigInvalid) {
+            // Prompt to continue with creation new VPC and IGW
+            const response = await prompts({
+              type: "select",
+              name: "continue",
+              message: "Choose next action:",
+              choices: [
+                { title: "Use Terraform State VPC and IGW", value: "tfstate" },
+                { title: "Use Configured VPC and IGW (Remove current state)", value: "configured" },
+                { title: "Exit and fix manually", value: "exit" },
+              ],
+            })
+
+            if (response.continue === "exit") {
+              console.log("Exiting...")
+              process.exit(0)
+            }
+
+            if (response.continue === "configured") {
+              // Rename to backup Terraform state file
+              const tfStateFile = path.join(this.terraformDir, "terraform.tfstate")
+              const backupStateFile = path.join(
+                this.terraformDir,
+                `terraform.tfstate.${Date.now()}.backup`,
+              )
+              fs.renameSync(tfStateFile, backupStateFile)
+
+              // Re-run init
+              this.runInit()
+            } else {
+              // Update values in .env.dt.{targetEnvironment}
+              this.updateEnvFile(this.targetEnvironment, {
+                VPC_ID: checkTfStateResult.vpcExists as string,
+                IGW_ID: checkTfStateResult.igwExists as string
+              })
+
+              this.enVars.VPC_ID = checkTfStateResult.vpcExists as string
+              this.enVars.IGW_ID = checkTfStateResult.igwExists as string
+            }
+          }
         }
 
-        // Imports existing IGW if it's not already managed by Terraform state.
-        if (ObjectType.isEmpty(igwExists)) {
-          console.info("💡 Importing existing IGW...")
-          this.runImport(`aws_internet_gateway.InternetGateway "${this.enVars.IGW_ID}"`)
-        } else {
-          console.warn("🌪️ Skip importing IGW, seems already managed by Terraform state.")
+        // Check if VPC and IGW exist
+        const ec2Client = new EC2Client({
+          region: this.enVars.AWS_REGION,
+          credentials: {
+            accessKeyId: this.enVars.AWS_ACCESS_KEY,
+            secretAccessKey: this.enVars.AWS_SECRET_KEY,
+          },
+        })
+
+        const vpcExists = await this.checkAwsResource(
+          ec2Client,
+          new DescribeVpcsCommand({ VpcIds: [this.enVars.VPC_ID] }),
+        )
+
+        const igwExists = await this.checkAwsResource(
+          ec2Client,
+          new DescribeInternetGatewaysCommand({ InternetGatewayIds: [this.enVars.IGW_ID] }),
+        )
+
+        if (!vpcExists && !igwExists) {
+          // Create new VPC and IGW if they don't exist
+          // console.log(`Creating new VPC and IGW in region ${this.enVars.AWS_REGION}`)
+
+          // Prompt to continue with creation new VPC and IGW
+          const response = await prompts({
+            type: "select",
+            name: "continue",
+            message: "Choose next action:",
+            choices: [
+              { title: "Create new VPC and IGW", value: "new" },
+              { title: "Exit and fix manually", value: "exit" },
+            ],
+          })
+
+          if (response.continue === "exit") {
+            console.log("Exiting...")
+            process.exit(0)
+          }
+
+          console.log(`Creating new VPC and IGW in region ${this.enVars.AWS_REGION}`)
+          this.runInit()
         }
-      } else {
-        // If Terraform state doesn't exist, it imports existing resources.
-        if (tfStateExists === undefined && vpcExists === undefined && igwExists === undefined) {
-          console.info("💡 Importing existing resources...")
-          this.runImport(`aws_vpc.VPC "${this.enVars.VPC_ID}"`)
-          this.runImport(`aws_internet_gateway.InternetGateway "${this.enVars.IGW_ID}"`)
-        } else {
-          console.warn("🌪️ Something went wrong!")
-          process.exit(1)
-        }
+      } catch (error) {
+        console.error("Error checking Terraform state:", error)
+        throw error
       }
       console.log()
 
@@ -113,6 +226,8 @@ export class Deploy {
       // Shows the Terraform resources.
       this.runShow()
       console.log()
+
+      return { vpcId: this.enVars.VPC_ID, igwId: this.enVars.IGW_ID }
     } catch (error) {
       console.error("❗️ Error executing Terraform:", error)
       process.exit(1)
@@ -201,6 +316,25 @@ export class Deploy {
       process.exit(0)
     }
     return response.deploymentType
+  }
+
+  private updateEnvFile(
+    targetEnvironment: string,
+    updates: Record<string, string>,
+  ): void {
+    const envFile = path.join(this.projectRoot, `.env.dt.${targetEnvironment}`)
+    let content = fs.readFileSync(envFile, "utf8")
+
+    Object.entries(updates).forEach(([key, value]) => {
+      const regex = new RegExp(`^${key}=.*$`, "m")
+      if (content.match(regex)) {
+        content = content.replace(regex, `${key}=${value}`)
+      } else {
+        content += `\n${key}=${value}`
+      }
+    })
+
+    fs.writeFileSync(envFile, content)
   }
 
   // checkEnvironmentVariables checks for required and optional environment variables.
@@ -299,6 +433,18 @@ export class Deploy {
     })
 
     return { enVars: envs, tfVars: expTfVars }
+  }
+
+  private async checkAwsResource(
+    ec2Client: EC2Client,
+    command: DescribeVpcsCommand | DescribeInternetGatewaysCommand,
+  ): Promise<boolean> {
+    try {
+      const response = await ec2Client.send(command)
+      return response.$metadata.httpStatusCode === 200
+    } catch (error) {
+      return false
+    }
   }
 
   // runInit initializes the Terraform project.

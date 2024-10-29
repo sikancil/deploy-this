@@ -53,7 +53,7 @@
     "ts-node": "^10.9.1"
   },
   "dependencies": {
-    "@aws-sdk/client-ec2": "^3.677.0",
+    "@aws-sdk/client-ec2": "^3.679.0",
     "@aws-sdk/client-ecr": "^3.370.0",
     "@aws-sdk/client-iam": "^3.677.0",
     "@types/lodash": "^4.17.12",

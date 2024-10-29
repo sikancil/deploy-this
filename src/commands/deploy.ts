@@ -1,15 +1,36 @@
 import { Deploy } from "../services/deploy"
 import { handleError } from "../utils/error.handler"
+import * as fs from 'fs'
+import * as path from 'path'
+
+async function updateEnvFile(targetEnvironment: string, updates: Record<string, string>): Promise<void> {
+  const envFile = path.join(process.cwd(), `.env.dt.${targetEnvironment}`)
+  let content = fs.readFileSync(envFile, 'utf8')
+  
+  Object.entries(updates).forEach(([key, value]) => {
+    const regex = new RegExp(`^${key}=.*$`, 'm')
+    if (content.match(regex)) {
+      content = content.replace(regex, `${key}=${value}`)
+    } else {
+      content += `\n${key}=${value}`
+    }
+  })
+  
+  fs.writeFileSync(envFile, content)
+}
 
 // This function runs the deployment process.
-// It takes the target environment as input and uses the Deploy service to handle the deployment.
-// It interacts with the src/services/deploy.ts file to perform the actual deployment steps.
 export async function run(targetEnvironment: string): Promise<void> {
   try {
-    // Create a new instance of the Deploy service with the target environment.
     const deploy = new Deploy(targetEnvironment)
-    // Run the deployment process using the Deploy service.
-    await deploy.run()
+    const result = await deploy.run()
+    
+    if (result?.vpcId && result?.igwId) {
+      await updateEnvFile(targetEnvironment, {
+        VPC_ID: result.vpcId,
+        IGW_ID: result.igwId
+      })
+    }
   } catch (error) {
     if (error instanceof Error) {
       switch (error.name) {
