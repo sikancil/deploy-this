@@ -58,13 +58,13 @@ output "codedeploy_deployment_group_name" {
 }
 
 output "instance_ids" {
-  # NOTE: This output provides a list of IDs of the EC2 instances created in 'instance.tf'.
   description = "A list of IDs of the EC2 instances"
-  value       = aws_instance.vm_instance.*.id
+  # value       = aws_instance.vm_instance.*.id
+  value       = aws_autoscaling_group.app.instance_ids
 }
 
 output "public_ips" {
-  # NOTE: This output provides a list of public IP addresses of the EC2 instances created in 'instance.tf'.
   description = "A list of public IP addresses of the EC2 instances"
-  value       = aws_instance.vm_instance.*.public_ip
+  # value       = aws_instance.vm_instance.*.public_ip
+  value       = aws_autoscaling_group.app.instances.*.public_ip
 }
