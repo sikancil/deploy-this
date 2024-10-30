@@ -187,7 +187,7 @@ export class Deploy {
         refresh: true,
         refreshOnly: false,
         generateConfig: false,
-        planFile: path.join(this.projectRoot, "infrastructure.plan"),
+        planFile: path.join(this.terraformDir, "infra.plan"),
       })
       console.log()
 

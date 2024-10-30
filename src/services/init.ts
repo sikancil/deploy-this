@@ -168,12 +168,15 @@ export class Init {
     for (const file of files) {
       if (file.endsWith(".tf") || file.endsWith(".sh") || file.endsWith(".md")) {
         const templateContent = fs.readFileSync(path.join(templateDir, file), "utf8")
-        const renderedContent = this.renderTemplate(templateContent, {
-          targetEnvironment: targetEnvironment,
-          deploymentType: deploymentType,
-          // Add more variables as needed
-        })
-        fs.writeFileSync(path.join(terraformDir, file), renderedContent)
+        
+        // const renderedContent = this.renderTemplate(templateContent, {
+        //   targetEnvironment: targetEnvironment,
+        //   deploymentType: deploymentType,
+        //   // Add more variables as needed
+        // })
+        // fs.writeFileSync(path.join(terraformDir, file), renderedContent)
+        
+        fs.writeFileSync(path.join(terraformDir, file), templateContent)
         console.log(`${file} created in ${terraformDir}`)
       }
     }
@@ -186,6 +189,6 @@ export class Init {
   }
 
   private renderTemplate(template: string, variables: Record<string, string>): string {
-    return template.replace(/\${(\w+)}/g, (_, key) => variables[key] || "")
+    return template.replace(/\${(\w+)}/g, (_, key) => variables[key] || "${" + key + "}")
   }
 }
