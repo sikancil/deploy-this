@@ -51,6 +51,13 @@ pipelines:
                 WAIT: 'true'
                 FILE_EXISTS_BEHAVIOR: 'OVERWRITE'
                 IGNORE_APPLICATION_STOP_FAILURES: 'true'
+            - pipe: atlassian/aws-ecr-cleanup:1.0.0
+              variables:
+                AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+                AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+                AWS_DEFAULT_REGION: $AWS_REGION
+                IMAGE_NAME: $IMAGE_NAME
+                KEEP_IMAGES: "3"
 
   tags:
     v*:
