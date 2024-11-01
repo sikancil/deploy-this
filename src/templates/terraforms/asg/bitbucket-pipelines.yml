@@ -4,46 +4,84 @@ definitions:
   steps:
     - step: &build-test
         name: Build and Test
+        caches:
+          - node
         script:
           - npm install
-          - npm run build
-          - npm test
-    - step: &build-push-image
-        name: Build and Push Docker Image
-        services:
-          - docker
-        script:
-          - export IMAGE_NAME=$ECR_REPOSITORY_URL:$BITBUCKET_BRANCH-$BITBUCKET_COMMIT
-          - pip install awscli
-          - eval $(aws ecr get-login --no-include-email --region $AWS_REGION)
-          - docker build -t $IMAGE_NAME .
-          - docker push $IMAGE_NAME
-    - step: &deploy
-        name: Deploy to AWS
-        script:
-          - pipe: atlassian/aws-code-deploy:0.3.1
-            variables:
-              AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
-              AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
-              AWS_DEFAULT_REGION: $AWS_REGION
-              APPLICATION_NAME: $CODEDEPLOY_APPLICATION
-              DEPLOYMENT_GROUP: $CODEDEPLOY_GROUP
-              S3_BUCKET: $S3_BUCKET
-              COMMAND: 'upload'
-              VERSION_LABEL: $BITBUCKET_BRANCH-$BITBUCKET_BUILD_NUMBER
-              WAIT: 'true'
+          - npm run lint
+          - npm run test
+        artifacts:
+          - dist/**
+          - node_modules/**
 
 pipelines:
+  default:
+    - step: *build-test
+  
   branches:
     main:
       - step: *build-test
-      - step: *build-push-image
-      - step: *deploy
-    develop:
-      - step: *build-test
-      - step: *build-push-image
-      - step: *deploy
+      - step:
+          name: Build and Push Docker Image
+          services:
+            - docker
+          script:
+            - export IMAGE_NAME=$ECR_REGISTRY/$ECR_REPOSITORY_NAME
+            - export IMAGE_TAG=${BITBUCKET_COMMIT:0:7}
+            - pipe: atlassian/aws-ecr-push-image:1.5.0
+              variables:
+                AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+                AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+                AWS_DEFAULT_REGION: $AWS_REGION
+                IMAGE_NAME: $IMAGE_NAME
+                IMAGE_TAG: $IMAGE_TAG
+      - step:
+          name: Deploy with CodeDeploy
+          script:
+            - pipe: atlassian/aws-code-deploy:0.3.4
+              variables:
+                AWS_DEFAULT_REGION: $AWS_REGION
+                AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+                AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+                APPLICATION_NAME: $CODEDEPLOY_APP_NAME
+                DEPLOYMENT_GROUP: $CODEDEPLOY_GROUP_NAME
+                S3_BUCKET: $CODEDEPLOY_S3_BUCKET
+                COMMAND: 'deploy'
+                VERSION_LABEL: $BITBUCKET_BUILD_NUMBER
+                WAIT: 'true'
+                FILE_EXISTS_BEHAVIOR: 'OVERWRITE'
+                IGNORE_APPLICATION_STOP_FAILURES: 'true'
 
-  pull-requests:
-    '**':
+  tags:
+    v*:
       - step: *build-test
+      - step:
+          name: Build and Push Release Docker Image
+          services:
+            - docker
+          script:
+            - export IMAGE_NAME=$ECR_REGISTRY/$ECR_REPOSITORY_NAME
+            - export IMAGE_TAG=${BITBUCKET_TAG}
+            - pipe: atlassian/aws-ecr-push-image:1.5.0
+              variables:
+                AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+                AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+                AWS_DEFAULT_REGION: $AWS_REGION
+                IMAGE_NAME: $IMAGE_NAME
+                IMAGE_TAG: $IMAGE_TAG
+      - step:
+          name: Deploy Release with CodeDeploy
+          script:
+            - pipe: atlassian/aws-code-deploy:0.3.4
+              variables:
+                AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+                AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+                AWS_DEFAULT_REGION: $AWS_REGION
+                APPLICATION_NAME: $CODEDEPLOY_APP_NAME
+                DEPLOYMENT_GROUP: $CODEDEPLOY_GROUP_NAME
+                S3_BUCKET: $CODEDEPLOY_S3_BUCKET
+                COMMAND: 'deploy'
+                VERSION_LABEL: $BITBUCKET_TAG
+                WAIT: 'true'
+                FILE_EXISTS_BEHAVIOR: 'OVERWRITE'
+                IGNORE_APPLICATION_STOP_FAILURES: 'true'
