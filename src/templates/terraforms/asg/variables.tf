@@ -16,6 +16,12 @@ variable "aws_profile" {
   # default     = "unknown"
 }
 
+variable "aws_account_id" {
+  description = "The AWS account ID"
+  type        = string
+  # default     = "UNKOWN AWS ACCOUNT ID"
+}
+
 variable "aws_region" {
   description = "The AWS region to deploy to"
   type        = string
@@ -34,24 +40,6 @@ variable "aws_secret_key" {
   # default     = "UNKOWN AWS SECRET KEY"
 }
 
-variable "bitbucket_app_password" {
-  description = "BitBucket App Password or API Key"
-  type        = string
-  # default     = "UNKOWN BITBUCKET APP PASSWORD OR API KEY"
-}
-
-variable "bitbucket_workspace" {
-  description = "BitBucket Workspace"
-  type        = string
-  # default     = "UNKOWN_BITBUCKET_WORKSPACE"
-}
-
-variable "bitbucket_branch" {
-  description = "BitBucket Branch for initial infrastructure creation or deployment"
-  type        = string
-  # default     = "UNKOWN_BITBUCKET_BRANCH"
-}
-
 variable "vpc_id" {
   description = "The ID of the existing VPC"
   type        = string
@@ -64,21 +52,38 @@ variable "igw_id" {
   # default     = "UNKOWN_IGW_ID"
 }
 
+variable "codedeploy_app_name" {
+  description = "The name of the CodeDeploy application"
+  type        = string
+}
+
+variable "codedeploy_group_name" {
+  description = "The name of the CodeDeploy deployment group"
+  type        = string
+}
+
+variable "codedeploy_s3_bucket" {
+  description = "The name of the CodeDeploy S3 bucket"
+  type        = string
+}
+
+variable "ecr_registry" {
+  description = "The ECR registry"
+  type        = string
+}
+
 variable "ecr_repository_name" {
   description = "The name of the ECR repository"
   type        = string
 }
 
-# variable "subnet_ids" {
-#   description = "The IDs of the subnets to deploy to"
-#   type        = list(string)
-# }
-
 variable "ami_id" {
   description = "The AMI ID to use for the EC2 instance (Ubuntu x64 22.04 LTS)"
   type        = string
-  # This is the AMI ID for Ubuntu 22.04 LTS in us-east-1. Update for your region.
-  default     = "ami-0430580de6244e02e"
+  # This is the AMI ID for Ubuntu 22.04 LTS 64-bit (x86), HVM), EBS General Purpose (SSD)
+  # us-east-2: ami-0ea3c35c5c3284d82  created 2024-09-30T12:23:14.000Z
+  # us-west-1: ami-0da424eb883458071  created 2024-09-30T12:22:45.000Z
+  default     = "ami-0da424eb883458071"
 }
 
 # For Auto Scaling Group require 1 or more instance types, Single Instance will use first element
@@ -102,6 +107,11 @@ variable "vpc_cidr" {
   default = "10.0.0.0/16"
 }
 
+# variable "subnet_ids" {
+#   description = "The IDs of the subnets to deploy to"
+#   type        = list(string)
+# }
+
 variable "public_subnet_cidrs" {
   description = "The CIDR blocks for the public subnets"
   type        = list(string)
@@ -112,6 +122,24 @@ variable "availability_zones" {
   description = "The availability zones to use"
   type        = list(string)
   default     = ["us-east-2a", "us-east-2b"]
+}
+
+variable "bitbucket_app_password" {
+  description = "BitBucket App Password or API Key"
+  type        = string
+  # default     = "UNKOWN BITBUCKET APP PASSWORD OR API KEY"
+}
+
+variable "bitbucket_workspace" {
+  description = "BitBucket Workspace"
+  type        = string
+  # default     = "UNKOWN_BITBUCKET_WORKSPACE"
+}
+
+variable "bitbucket_branch" {
+  description = "BitBucket Branch for initial infrastructure creation or deployment"
+  type        = string
+  # default     = "UNKOWN_BITBUCKET_BRANCH"
 }
 
 variable "map_public_ip" {

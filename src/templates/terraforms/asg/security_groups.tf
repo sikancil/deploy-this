@@ -49,6 +49,22 @@ resource "aws_security_group" "ec2" {
     security_groups = [aws_security_group.alb.id]
   }
 
+  ingress {
+    description = "SSH access from anywhere"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0", var.vpc_cidr]
+  }
+
+  ingress {
+    description = "ICMP - IPv4 (ping) from anywhere"
+    from_port   = -1
+    to_port     = -1
+    protocol    = "icmp"
+    cidr_blocks = ["0.0.0.0/0", var.vpc_cidr]
+  }
+
   egress {
     from_port   = 0
     to_port     = 0

@@ -27,31 +27,33 @@ apt-get update && apt-get upgrade -y
 
 # Install required packages
 log "Installing required packages"
-apt-get install -y wget curl net-tools iproute2
-
-# Install Node.js v20 LTS
-log "Installing Node.js v20 LTS"
-curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-apt-get install -y nodejs
-
-# Install Deno 2.0
-log "Installing Deno 2.0"
-curl -fsSL https://deno.land/x/install/install.sh | sh
-
-# Install Bun
-log "Installing Bun"
-curl -fsSL https://bun.sh/install | bash
+apt-get install -y wget curl net-tools iproute2 jq unzip
 
 # Install Docker and Docker Compose plugin
 log "Installing Docker and Docker Compose plugin"
 curl -fsSL https://get.docker.com | sh
 apt-get install -y docker-compose-plugin
 
-# Install AWS CLI
-log "Installing AWS CLI"
-curl "https://s3.amazonaws.com/aws-cli/awscli-bundle.zip" -o "awscli-bundle.zip"
-unzip awscli-bundle.zip
-./awscli-bundle/install -i /usr/local/aws -b /usr/local/bin/aws
+# Configure Docker daemon with log rotation
+cat << EOF > /etc/docker/daemon.json
+{
+    "log-driver": "json-file",
+    "log-opts": {
+        "max-size": "10m",
+        "max-file": "3"
+    }
+}
+EOF
+
+# Restart Docker to apply changes
+systemctl restart docker
+
+# Install AWS CLI v2
+log "Installing AWS CLI v2"
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+./aws/install
+rm -rf aws awscliv2.zip
 
 # Install CodeDeploy agent
 log "Installing CodeDeploy agent"
@@ -61,14 +63,35 @@ wget https://aws-codedeploy-${aws_region}.s3.amazonaws.com/latest/install
 chmod +x ./install
 ./install auto
 
+# Configure AWS credentials and region
+log "Configuring AWS credentials"
+mkdir -p /root/.aws
+cat << EOF > /root/.aws/credentials
+[default]
+aws_access_key_id = ${aws_access_key}
+aws_secret_access_key = ${aws_secret_key}
+EOF
+
+cat << EOF > /root/.aws/config
+[default]
+region = ${aws_region}
+output = json
+EOF
+
 # Export variables
 log "Exporting variables"
 cat << EOF > /home/ubuntu/.env.vm
 NODE_ENV=${node_env}
 AWS_PROFILE=${aws_profile}
 AWS_REGION=${aws_region}
+AWS_ACCOUNT_ID=${aws_account_id}
 AWS_ACCESS_KEY=${aws_access_key}
 AWS_SECRET_KEY=${aws_secret_key}
+ECR_REGISTRY=${aws_account_id}.dkr.ecr.${aws_region}.amazonaws.com
+ECR_REPOSITORY_NAME=${project_name}
+CODEDEPLOY_APP_NAME=${codedeploy_app_name}
+CODEDEPLOY_GROUP_NAME=${codedeploy_group_name}
+CODEDEPLOY_S3_BUCKET=${codedeploy_s3_bucket}
 BITBUCKET_APP_PASSWORD=${bitbucket_app_password}
 BITBUCKET_WORKSPACE=${bitbucket_workspace}
 BITBUCKET_BRANCH=${bitbucket_branch}
@@ -78,10 +101,12 @@ EOF
 echo "set -a; source /home/ubuntu/.env.vm; set +a" >> /home/ubuntu/.bashrc
 
 # Set correct ownership and permissions
-chown ubuntu:ubuntu /home/ubuntu/.env.vm
+chown -R ubuntu:ubuntu /home/ubuntu
 chmod 600 /home/ubuntu/.env.vm
+chmod 600 /root/.aws/credentials
 
-# Source the environment variables
-echo "source /home/ubuntu/.env.vm" >> /home/ubuntu/.bashrc
+# Login to ECR
+log "Logging into ECR"
+aws ecr get-login-password --region ${aws_region} | docker login --username AWS --password-stdin ${aws_account_id}.dkr.ecr.${aws_region}.amazonaws.com
 
 log "Cloud-init script completed"

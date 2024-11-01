@@ -57,14 +57,14 @@ output "codedeploy_deployment_group_name" {
   value       = aws_codedeploy_deployment_group.app_dg.deployment_group_name
 }
 
-output "instance_ids" {
-  description = "A list of IDs of the EC2 instances"
-  # value       = aws_instance.vm_instance.*.id
-  value       = aws_autoscaling_group.app.instance_ids
-}
+# output "instance_ids" {
+#   description = "A list of IDs of the EC2 instances"
+#   # value       = aws_instance.vm_instance.*.id
+#   value       = aws_autoscaling_group.app.instance_ids
+# }
 
-output "public_ips" {
-  description = "A list of public IP addresses of the EC2 instances"
-  # value       = aws_instance.vm_instance.*.public_ip
-  value       = aws_autoscaling_group.app.instances.*.public_ip
-}
+# output "public_ips" {
+#   description = "A list of public IP addresses of the EC2 instances"
+#   # value       = aws_instance.vm_instance.*.public_ip
+#   value       = aws_autoscaling_group.app.instances.*.public_ip
+# }

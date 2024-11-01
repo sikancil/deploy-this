@@ -14,7 +14,7 @@ resource "aws_launch_template" "app" {
     name = aws_iam_instance_profile.ec2_profile.name
   }
 
-  vpc_security_group_ids = [aws_security_group.ec2.id]
+  # vpc_security_group_ids = [aws_security_group.ec2.id]
 
   network_interfaces {
     # associate_public_ip_address = true
@@ -39,10 +39,17 @@ resource "aws_launch_template" "app" {
 
   user_data = base64encode(templatefile("${path.module}/cloud-init.sh", {
     node_env               = var.node_env
+    project_name           = var.project_name
     aws_profile            = var.aws_profile
+    aws_account_id         = var.aws_account_id
     aws_region             = var.aws_region
     aws_access_key         = var.aws_access_key
     aws_secret_key         = var.aws_secret_key
+    codedeploy_app_name    = var.codedeploy_app_name
+    codedeploy_group_name  = var.codedeploy_group_name
+    codedeploy_s3_bucket   = var.codedeploy_s3_bucket
+    ecr_registry           = var.ecr_registry
+    ecr_repository_name    = var.ecr_repository_name
     bitbucket_app_password = var.bitbucket_app_password
     bitbucket_workspace    = var.bitbucket_workspace
     bitbucket_branch       = var.bitbucket_branch
@@ -53,8 +60,13 @@ resource "aws_launch_template" "app" {
     tags = merge(
       var.common_tags,
       {
-        Name = "${var.project_name}-vm"
-        Args = "• ${var.node_env} • ${var.project_name} • ${var.aws_profile} • ${var.aws_region} • ${var.bitbucket_workspace} • ${var.bitbucket_branch}"
+        Name = var.project_name
+        Environment = var.node_env
+        Project = var.project_name
+        Profile = var.aws_profile
+        Region = var.aws_region
+        Workspace = var.bitbucket_workspace
+        Branch = var.bitbucket_branch
       }
     )
   }
@@ -74,13 +86,13 @@ resource "aws_autoscaling_group" "app" {
   vpc_zone_identifier = aws_subnet.public[*].id
   # vpc_zone_identifier = data.aws_subnets.default.ids
 
-  launch_template {
-    id      = aws_launch_template.app.id
-    version = "$Latest"
-  }
-
   health_check_type         = "ELB"
   health_check_grace_period = 300
+
+  # launch_template {
+  #   id      = aws_launch_template.app.id
+  #   version = "$Latest"
+  # }
 
   mixed_instances_policy {
     launch_template {

@@ -1,3 +1,4 @@
+# IAM role for CodeDeploy
 resource "aws_iam_role" "codedeploy_role" {
   name = "${var.project_name}-codedeploy-role"
 
@@ -15,6 +16,37 @@ resource "aws_iam_role" "codedeploy_role" {
   })
 }
 
+# IAM policy for CodeDeploy permissions
+# resource "aws_iam_user_policy" "codedeploy_policy" {
+#   name = "${var.project_name}-codedeploy-policy"
+#   user = "dimas-console"  # Replace with your IAM user if different
+
+#   policy = jsonencode({
+#     Version = "2012-10-17"
+#     Statement = [
+#       {
+#         Effect = "Allow"
+#         Action = [
+#           "codedeploy:*",
+#           "ec2:*",
+#           "elasticloadbalancing:*",
+#           "autoscaling:*",
+#           "cloudwatch:*",
+#           "s3:*",
+#           "sns:*",
+#           "iam:CreateRole",
+#           "iam:GetRole",
+#           "iam:PutRolePolicy",
+#           "iam:DeleteRolePolicy",
+#           "iam:DeleteRole"
+#         ]
+#         Resource = "*"
+#       }
+#     ]
+#   })
+# }
+
+# IAM role for EC2 instances
 resource "aws_iam_role" "ec2_role" {
   name = "${var.project_name}-ec2-role"
 
@@ -41,6 +73,12 @@ resource "aws_iam_instance_profile" "ec2_profile" {
   name = "${var.project_name}-ec2-profile"
   role = aws_iam_role.ec2_role.name
 }
+
+# Add EC2 Instance Connect policy
+# resource "aws_iam_role_policy_attachment" "ec2_instance_connect" {
+#   policy_arn = "arn:aws:iam::aws:policy/AWSEc2InstanceConnectPolicy"
+#   role       = aws_iam_role.ec2_role.name
+# }
 
 resource "aws_iam_role_policy_attachment" "ec2_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
