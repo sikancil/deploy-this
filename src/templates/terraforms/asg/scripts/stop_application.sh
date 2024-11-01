@@ -21,8 +21,17 @@ else
     log "No running container found"
 fi
 
-# Clean up old images (keep last 5)
-log "Cleaning up old images"
-docker images "${ECR_REGISTRY}/${ECR_REPOSITORY_NAME}" --format "{{.ID}}" | tail -n +6 | xargs -r docker rmi || true
+# Clean up unused containers
+log "Cleaning up unused containers"
+docker container prune -f
+
+# Clean up unused images
+log "Cleaning up unused images"
+docker image prune -f
+
+# Keep only the 3 most recent images
+log "Removing old images, keeping 3 most recent"
+# docker images "${ECR_REGISTRY}/${ECR_REPOSITORY_NAME}" --format "{{.ID}}" | tail -n +6 | xargs -r docker rmi || true
+docker images "${ECR_REGISTRY}/${ECR_REPOSITORY_NAME}" --format "{{.ID}}" | tail -n +4 | xargs -r docker rmi -f || true
 
 log "Stop application script completed"

@@ -42,4 +42,13 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+# Cleanup unused containers and images
+log "Cleaning up unused Docker resources"
+docker container prune -f
+docker image prune -f
+
+# Keep only the 3 most recent images
+log "Removing old images, keeping 3 most recent"
+docker images "${ECR_REGISTRY}/${ECR_REPOSITORY_NAME}" --format "{{.ID}}" | tail -n +4 | xargs -r docker rmi -f || true
+
 log "Before_install script completed successfully"
