@@ -356,15 +356,21 @@ export class Deploy {
       "DEPLOYMENT_TYPE",
       "AWS_PROFILE",
       "AWS_REGION",
+      "AWS_ACCOUNT_ID",
       "AWS_ACCESS_KEY",
       "AWS_SECRET_KEY",
       "VPC_ID",
       "IGW_ID",
+      "AMI_ID",
+      "INSTANCE_TYPES",
+      "ECR_REGISTRY",
+      "ECR_REPOSITORY_NAME",
+      "CODEDEPLOY_APP_NAME",
+      "CODEDEPLOY_GROUP_NAME",
+      "CODEDEPLOY_S3_BUCKET",
       "BITBUCKET_APP_PASSWORD",
       "BITBUCKET_WORKSPACE",
       "BITBUCKET_BRANCH",
-      "AMI_ID",
-      "ASG_INSTANCE_TYPES",
     ]
 
     if (this.deploymentType === "asg") {
@@ -403,7 +409,7 @@ export class Deploy {
     // Set Terraform environment variables
     const expTfVars: string[] = Object.keys(envs).map((key) => {
       const value = envs[key]
-      if (key === "ASG_INSTANCE_TYPES") {
+      if (key === "INSTANCE_TYPES") {
         process.env[`TF_VAR_instance_types`] = value
         return `TF_VAR_instance_types=${value}`
       } else {

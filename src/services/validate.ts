@@ -5,6 +5,7 @@ import { promisify } from "node:util"
 import dotenv from "dotenv"
 import { satisfies, compare, CompareOperator } from "compare-versions"
 import { ObjectType } from "../utils/object"
+import { patchEnvs } from "../utils/env"
 
 // Promisify the exec function for asynchronous execution of shell commands.
 const execAsync = promisify(exec)
@@ -107,7 +108,9 @@ export class ValidateEnvironment {
     // return checkPoint.stage
   }
 
+
   //=== Private Functions ===//
+
 
   // NOTE: Checks if the .env file exists in the target directory. If not and doForce is true, it creates one.
   // Interacts with src/index.ts which calls this function to ensure the .env file exists before proceeding.
@@ -227,7 +230,8 @@ export class ValidateEnvironment {
     }
 
     // Read and parse the .env.dt.{environment} file.
-    const targetDotEnvDt = dotenv.parse(fs.readFileSync(targetDtEnvFile, "utf-8"))
+    // const targetDotEnvDt = dotenv.parse(fs.readFileSync(targetDtEnvFile, "utf-8"))
+    const targetDotEnvDt = patchEnvs(targetDtEnvFile)
     // Check if AWS credentials are set.
     if (
       ObjectType.isEmpty(targetDotEnvDt.AWS_REGION) ||
@@ -265,15 +269,14 @@ export class ValidateEnvironment {
       DEPLOYMENT_TYPE: (value: string) => ["single", "asg"].includes(value),
       AWS_PROFILE: (value: string) => value.length > 0,
       AWS_REGION: (value: string) => /^[a-z]{2}-[a-z]+-\d$/.test(value),
+      AWS_ACCOUNT_ID: (value: string) => /^[0-9]{12}$/.test(value),
       AWS_ACCESS_KEY: (value: string) => /^[A-Z0-9]{20}$/.test(value),
       AWS_SECRET_KEY: (value: string) => value.length >= 40,
       VPC_ID: (value: string) => /^vpc-[a-f0-9]{17}$/.test(value),
       IGW_ID: (value: string) => /^igw-[a-f0-9]{17}$/.test(value),
-      BITBUCKET_APP_PASSWORD: (value: string) => value.length > 0,
-      BITBUCKET_WORKSPACE: (value: string) => value.length > 0,
-      BITBUCKET_BRANCH: (value: string) => value.length > 0,
+      SSL_CERTIFICATE_ARN: (value: string) => /^arn:aws:acm:us-east-2:[0-9]{12}:certificate\/[a-z0-9]{8}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{12}$/.test(value),
       AMI_ID: (value: string) => /^ami-[a-f0-9]{17}$/.test(value),
-      ASG_INSTANCE_TYPES: (value: string) => {
+      INSTANCE_TYPES: (value: string) => {
         try {
           const types = JSON.parse(value)
           return (
@@ -285,7 +288,14 @@ export class ValidateEnvironment {
           return false
         }
       },
+      ECR_REGISTRY: (value: string) => /^[0-9]{12}.dkr.ecr.[a-z]{2}-[a-z]+-\d{1}.amazonaws.com$/.test(value),
       ECR_REPOSITORY_NAME: (value: string) => value.length > 0,
+      CODEDEPLOY_APP_NAME: (value: string) => value.length > 0,
+      CODEDEPLOY_GROUP_NAME: (value: string) => value.length > 0,
+      CODEDEPLOY_S3_BUCKET: (value: string) => value.length > 0,
+      BITBUCKET_APP_PASSWORD: (value: string) => value.length > 0,
+      BITBUCKET_WORKSPACE: (value: string) => value.length > 0,
+      BITBUCKET_BRANCH: (value: string) => value.length > 0,
     }
 
     const missingVars: string[] = []
