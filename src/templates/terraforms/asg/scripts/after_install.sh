@@ -13,16 +13,19 @@ log "Starting after_install script"
 # Navigate to the application directory
 cd /home/ubuntu/app
 
-# Install dependencies
-log "Installing dependencies"
-npm install
+# Pull the new Docker image
+IMAGE_TAG=${DEPLOYMENT_GROUP_ID:0:7}
+FULL_IMAGE_NAME="${ECR_REGISTRY}/${ECR_REPOSITORY_NAME}:${IMAGE_TAG}"
 
-# Build the application (if necessary)
-log "Building the application"
-npm run build
+log "Pulling Docker image: ${FULL_IMAGE_NAME}"
+docker pull ${FULL_IMAGE_NAME}
 
-# Set correct permissions
-log "Setting correct permissions"
-chown -R ubuntu:ubuntu /home/ubuntu/app
+if [ $? -ne 0 ]; then
+    log "ERROR: Failed to pull Docker image"
+    exit 1
+fi
 
-log "After_install script completed"
+# Tag the image as 'latest' locally
+docker tag ${FULL_IMAGE_NAME} ${ECR_REPOSITORY_NAME}:latest
+
+log "After_install script completed successfully"

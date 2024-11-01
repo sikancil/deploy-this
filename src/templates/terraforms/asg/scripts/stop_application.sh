@@ -10,13 +10,19 @@ log() {
 
 log "Starting stop_application script"
 
-# Check if the application is running
-if pm2 list | grep -q "myapp"; then
-    log "Stopping the application"
-    pm2 stop myapp
-    pm2 delete myapp
+# Find and stop the current container
+CURRENT_CONTAINER=$(docker ps -q --filter "name=app-")
+
+if [ ! -z "$CURRENT_CONTAINER" ]; then
+    log "Stopping current container: $CURRENT_CONTAINER"
+    docker stop $CURRENT_CONTAINER || true
+    docker rm $CURRENT_CONTAINER || true
 else
-    log "Application is not running"
+    log "No running container found"
 fi
 
-log "Application stopped"
+# Clean up old images (keep last 5)
+log "Cleaning up old images"
+docker images "${ECR_REGISTRY}/${ECR_REPOSITORY_NAME}" --format "{{.ID}}" | tail -n +6 | xargs -r docker rmi || true
+
+log "Stop application script completed"

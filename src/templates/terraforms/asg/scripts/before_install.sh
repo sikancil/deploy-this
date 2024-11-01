@@ -10,20 +10,36 @@ log() {
 
 log "Starting before_install script"
 
-# Update package lists
-log "Updating package lists"
-sudo apt-get update
-
-# Install Node.js and npm if not already installed
-if ! command -v node &> /dev/null; then
-    log "Installing Node.js and npm"
-    curl -fsSL https://deb.nodesource.com/setup_14.x | sudo -E bash -
-    sudo apt-get install -y nodejs
+# Check if Docker is installed and running
+if ! command -v docker &> /dev/null; then
+    log "ERROR: Docker is not installed"
+    exit 1
 fi
 
-# Create application directory if it doesn't exist
-log "Creating application directory"
-sudo mkdir -p /home/ubuntu/app
-sudo chown ubuntu:ubuntu /home/ubuntu/app
+if ! systemctl is-active --quiet docker; then
+    log "ERROR: Docker service is not running"
+    exit 1
+fi
 
-log "Before_install script completed"
+# Check AWS CLI installation
+if ! command -v aws &> /dev/null; then
+    log "ERROR: AWS CLI is not installed"
+    exit 1
+fi
+
+# Create application and scripts directories
+log "Creating application directories"
+mkdir -p /home/ubuntu/app/scripts
+chown -R ubuntu:ubuntu /home/ubuntu/app
+chmod 755 /home/ubuntu/app/scripts
+
+# Login to ECR
+log "Logging into ECR"
+aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
+
+if [ $? -ne 0 ]; then
+    log "ERROR: Failed to login to ECR"
+    exit 1
+fi
+
+log "Before_install script completed successfully"
