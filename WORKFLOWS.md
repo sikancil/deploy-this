@@ -192,7 +192,7 @@ The DeployThis CLI uses two main environment files:
    - `BITBUCKET_APP_PASSWORD`, `BITBUCKET_WORKSPACE`, `BITBUCKET_BRANCH`: Bitbucket-related variables
    - `DEPLOYMENT_TYPE`: "single" or "asg"
    - `AMI_ID`: ID of the Amazon Machine Image to use
-   - `ASG_INSTANCE_TYPES`: List of instance types for ASG deployments
+   - `INSTANCE_TYPES`: List of instance types for ASG deployments
 
 Ensure all required variables are set before running `dt` commands.
 
