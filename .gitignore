@@ -20,3 +20,5 @@ node_modules/
 terraform.log
 *.plan
 .terraforms
+
+*.log
