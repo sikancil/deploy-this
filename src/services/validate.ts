@@ -268,13 +268,16 @@ export class ValidateEnvironment {
     const requiredVars = {
       DEPLOYMENT_TYPE: (value: string) => ["single", "asg"].includes(value),
       PROJECT_NAME: (value: string) => value.length > 0,
+
       AWS_PROFILE: (value: string) => value.length > 0,
       AWS_REGION: (value: string) => /^[a-z]{2}-[a-z]+-\d$/.test(value),
       AWS_ACCOUNT_ID: (value: string) => /^[0-9]{12}$/.test(value),
       AWS_ACCESS_KEY: (value: string) => /^[A-Z0-9]{20}$/.test(value),
       AWS_SECRET_KEY: (value: string) => value.length >= 40,
+      
       VPC_ID: (value: string) => /^vpc-[a-f0-9]{17}$/.test(value),
       IGW_ID: (value: string) => /^igw-[a-f0-9]{17}$/.test(value),
+      
       SSL_CERTIFICATE_ARN: (value: string) => /^arn:aws:acm:[a-z]{2}-[a-z]+-\d+:\d+:certificate\/[a-z0-9-]+$/.test(value),
       AMI_ID: (value: string) => /^ami-[a-f0-9]{17}$/.test(value),
       INSTANCE_TYPES: (value: string) => {
@@ -289,11 +292,14 @@ export class ValidateEnvironment {
           return false
         }
       },
+
       // ECR_REGISTRY: (value: string) => /^[0-9]{12}.dkr.ecr.[a-z]{2}-[a-z]+-\d+.amazonaws.com$/.test(value),
       // ECR_REPOSITORY_NAME: (value: string) => value.length > 0,
+      
       // CODEDEPLOY_APP_NAME: (value: string) => value.length > 0,
       // CODEDEPLOY_GROUP_NAME: (value: string) => value.length > 0,
       // CODEDEPLOY_S3_BUCKET: (value: string) => value.length > 0,
+      
       BITBUCKET_USERNAME: (value: string) => value.length > 0,
       BITBUCKET_APP_PASSWORD: (value: string) => value.length > 0,
       BITBUCKET_WORKSPACE: (value: string) => value.length > 0,

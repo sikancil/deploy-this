@@ -13,6 +13,7 @@ import {
 import _ from "lodash"
 import { TFState } from "../interfaces/tfstate"
 import { ObjectType } from "../utils/object"
+import { patchEnvs } from "../utils/env"
 
 // dotenv.config()
 
@@ -152,13 +153,19 @@ export class Deploy {
           this.enVars.VPC_ID = checkTfStateResult.vpcExists as string
           this.enVars.IGW_ID = checkTfStateResult.igwExists as string
 
-          if (!(vpcConfigValid && igwConfigValid)) {
+          if ((vpcConfigValid && igwConfigValid)) {
+            console.warn(`❗️ Invalid Terraform state and found valid configuration variables.`)
+            console.warn(`👉 Now will trying to import resources from configured variables...`)
+
             // Import existing VPC and IGW
             this.runImport(`aws_vpc.VPC "${this.enVars.VPC_ID}"`)
             this.runImport(`aws_internet_gateway.InternetGateway "${this.enVars.IGW_ID}"`)
           }
         } else {
           if (vpcConfigValid && igwConfigValid) {
+            console.warn(`❗️ Invalid Terraform state and found valid configuration variables.`) 
+            console.warn(`👉 Now will trying to import resources from configured variables...`)
+
             // Rename to backup Terraform state file
             const tfStateFile = path.join(this.terraformDir, "terraform.tfstate")
             const backupStateFile = path.join(
@@ -170,10 +177,27 @@ export class Deploy {
             // Import existing VPC and IGW
             this.runImport(`aws_vpc.VPC "${this.enVars.VPC_ID}"`)
             this.runImport(`aws_internet_gateway.InternetGateway "${this.enVars.IGW_ID}"`)
+          } else {
+            console.warn(
+              `❗️ WARN: Both Terraform state and configured variables are invalid and ignored, and will create new VPC and IGW.`,
+            )
+            console.log()
+
+            // Prompt confirmation to create new VPC and IGW
+            const vpcConfirm = await prompts({
+              type: "confirm",
+              name: "create_new_vpc_igw",
+              message: "Deployment will create new VPC and IGW. Continue?",
+              initial: false,
+            })
+
+            if (!vpcConfirm.create_new_vpc_igw) {
+              console.warn("❗️ WARN: Deployment canceled by user.")
+              console.log()
+              process.exit(0)
+            }
           }
         }
-
-        this.runInit()
       } catch (error) {
         process.chdir(this.projectRoot)
         console.error("Error checking Terraform state:", error)
@@ -330,7 +354,8 @@ export class Deploy {
         console.error(`${envFile} file not found. Please create it.`)
         process.exit(1)
       } else {
-        dotEnv = dotenv.parse(fs.readFileSync(envFile))
+        // dotEnv = dotenv.parse(fs.readFileSync(envFile))
+        dotEnv = patchEnvs(envFile)
         console.log(`✅ .env`)
       }
 
@@ -347,27 +372,35 @@ export class Deploy {
       console.warn(`WARN: ${dtEnvFile} file not found. Please create it.`)
       dtEnv = {}
     } else {
-      dtEnv = dotenv.parse(fs.readFileSync(dtEnvFile))
+      // dtEnv = dotenv.parse(fs.readFileSync(dtEnvFile))
+      dtEnv = patchEnvs(dtEnvFile)
       console.log(`✅ .env.dt.${NODE_ENV}\n`)
     }
 
     const requiredEnvVars = ["NODE_ENV"]
     const requiredDtEnvVars = [
       "DEPLOYMENT_TYPE",
+      "PROJECT_NAME",
+
       "AWS_PROFILE",
       "AWS_REGION",
       "AWS_ACCOUNT_ID",
       "AWS_ACCESS_KEY",
       "AWS_SECRET_KEY",
+      
       "VPC_ID",
       "IGW_ID",
+      
       "AMI_ID",
       "INSTANCE_TYPES",
-      "ECR_REGISTRY",
-      "ECR_REPOSITORY_NAME",
-      "CODEDEPLOY_APP_NAME",
-      "CODEDEPLOY_GROUP_NAME",
-      "CODEDEPLOY_S3_BUCKET",
+      
+      // "ECR_REGISTRY",
+      // "ECR_REPOSITORY_NAME",
+      
+      // "CODEDEPLOY_APP_NAME",
+      // "CODEDEPLOY_GROUP_NAME",
+      // "CODEDEPLOY_S3_BUCKET",
+      
       "BITBUCKET_APP_PASSWORD",
       "BITBUCKET_WORKSPACE",
       "BITBUCKET_BRANCH",
