@@ -96,11 +96,14 @@ program
 
 // Define the 'rollback' command for rolling back infrastructure
 program
-  .command("rollback")
-  .description("Rollback infrastructure (except VPC and InternetGateway)")
-  .action(async () => {
+  .command("rollback [targetEnvironment] [destroyOptions]")
+  .option("-f, --force", "Force destroying deployed resources")
+  .description("Rollback infrastructure")
+  .action(async (targetEnvironment, destroyOptions, args) => {
+    // Determine if the force flag is set
+    const doForce = args?.force === true
     try {
-      await cmdRollback()
+      await cmdRollback(targetEnvironment, destroyOptions, doForce)
     } catch (error) {
       handleError(`Error during rollback.`, error)
     }
