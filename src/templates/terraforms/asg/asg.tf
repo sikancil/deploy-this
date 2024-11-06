@@ -45,11 +45,12 @@ resource "aws_launch_template" "app" {
     aws_region             = var.aws_region
     aws_access_key         = var.aws_access_key
     aws_secret_key         = var.aws_secret_key
-    codedeploy_app_name    = var.codedeploy_app_name
-    codedeploy_group_name  = var.codedeploy_group_name
-    codedeploy_s3_bucket   = var.codedeploy_s3_bucket
-    ecr_registry           = var.ecr_registry
-    ecr_repository_name    = var.ecr_repository_name
+    # codedeploy_app_name    = var.codedeploy_app_name
+    # codedeploy_group_name  = var.codedeploy_group_name
+    # codedeploy_s3_bucket   = var.codedeploy_s3_bucket
+    # ecr_registry           = var.ecr_registry
+    # ecr_repository_name    = var.ecr_repository_name
+    bitbucket_username     = var.bitbucket_username
     bitbucket_app_password = var.bitbucket_app_password
     bitbucket_workspace    = var.bitbucket_workspace
     bitbucket_branch       = var.bitbucket_branch
@@ -60,7 +61,7 @@ resource "aws_launch_template" "app" {
     tags = merge(
       var.common_tags,
       {
-        Name = var.project_name
+        Name = "${var.project_name}-vm"
         Environment = var.node_env
         Project = var.project_name
         Profile = var.aws_profile

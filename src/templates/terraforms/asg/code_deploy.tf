@@ -1,16 +1,16 @@
 resource "aws_codedeploy_app" "app" {
-  # name = "${var.project_name}-app"
-  name = var.codedeploy_app_name
+  # name = var.codedeploy_app_name
+  name = "${var.project_name}-cd"
 }
 
 resource "aws_codedeploy_deployment_group" "app_dg" {
-  # app_name               = aws_codedeploy_app.app.name
-  # deployment_group_name  = "${var.project_name}-dg"
-  
-  app_name               = aws_codedeploy_app.app.name
-  
   # app_name               = var.codedeploy_app_name
-  deployment_group_name  = var.codedeploy_group_name
+  app_name               = aws_codedeploy_app.app.name
+
+  
+  
+  # deployment_group_name  = var.codedeploy_group_name
+  deployment_group_name  = "${var.project_name}-cd-dg"
   service_role_arn       = aws_iam_role.codedeploy_role.arn
   deployment_config_name = "CodeDeployDefault.OneAtATime"
 

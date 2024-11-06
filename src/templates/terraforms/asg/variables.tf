@@ -52,30 +52,30 @@ variable "igw_id" {
   # default     = "UNKOWN_IGW_ID"
 }
 
-variable "codedeploy_app_name" {
-  description = "The name of the CodeDeploy application"
-  type        = string
-}
+# variable "ecr_registry" {
+#   description = "The ECR registry"
+#   type        = string
+# }
 
-variable "codedeploy_group_name" {
-  description = "The name of the CodeDeploy deployment group"
-  type        = string
-}
+# variable "ecr_repository_name" {
+#   description = "The name of the ECR repository"
+#   type        = string
+# }
 
-variable "codedeploy_s3_bucket" {
-  description = "The name of the CodeDeploy S3 bucket"
-  type        = string
-}
+# variable "codedeploy_app_name" {
+#   description = "The name of the CodeDeploy application"
+#   type        = string
+# }
 
-variable "ecr_registry" {
-  description = "The ECR registry"
-  type        = string
-}
+# variable "codedeploy_group_name" {
+#   description = "The name of the CodeDeploy deployment group"
+#   type        = string
+# }
 
-variable "ecr_repository_name" {
-  description = "The name of the ECR repository"
-  type        = string
-}
+# variable "codedeploy_s3_bucket" {
+#   description = "The name of the CodeDeploy S3 bucket"
+#   type        = string
+# }
 
 variable "ami_id" {
   description = "The AMI ID to use for the EC2 instance (Ubuntu x64 22.04 LTS)"
@@ -122,6 +122,12 @@ variable "availability_zones" {
   description = "The availability zones to use"
   type        = list(string)
   default     = ["us-east-2a", "us-east-2b"]
+}
+
+variable "bitbucket_username" {
+  description = "BitBucket Username"
+  type        = string
+  # default     = "UNKOWN BITBUCKET USERNAME"
 }
 
 variable "bitbucket_app_password" {
