@@ -2,8 +2,8 @@ import fs from "node:fs"
 import path from "node:path"
 import { exec } from "node:child_process"
 import { promisify } from "node:util"
-import dotenv from "dotenv"
 import { satisfies, compare, CompareOperator } from "compare-versions"
+
 import { ObjectType } from "../utils/object"
 import { patchEnvs } from "../utils/env"
 
@@ -163,7 +163,7 @@ export class ValidateEnvironment {
 
     // If targetEnvironment is not set, read NODE_ENV from .env file.
     if (ObjectType.isEmpty(targetEnvironment)) {
-      const targetDotEnv = dotenv.parse(fs.readFileSync(targetEnvFile, "utf-8"))
+      const targetDotEnv = patchEnvs(targetEnvFile)
       nodeEnv = targetDotEnv.NODE_ENV
     }
 
@@ -262,7 +262,7 @@ export class ValidateEnvironment {
     const dtEnvFile = path.join(TARGET_DIR, `.env.dt.${nodeEnv}`)
 
     // Load environment variables from .env.dt.{stage} file
-    const envConfig = dotenv.parse(fs.readFileSync(dtEnvFile))
+    const envConfig = patchEnvs(dtEnvFile)
 
     // Define required variables and their validation rules
     const requiredVars = {
@@ -274,7 +274,7 @@ export class ValidateEnvironment {
       AWS_SECRET_KEY: (value: string) => value.length >= 40,
       VPC_ID: (value: string) => /^vpc-[a-f0-9]{17}$/.test(value),
       IGW_ID: (value: string) => /^igw-[a-f0-9]{17}$/.test(value),
-      SSL_CERTIFICATE_ARN: (value: string) => /^arn:aws:acm:us-east-2:[0-9]{12}:certificate\/[a-z0-9]{8}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{12}$/.test(value),
+      SSL_CERTIFICATE_ARN: (value: string) => /^arn:aws:acm:[a-z]{2}-[a-z]+-\d+:\d+:certificate\/[a-z0-9-]+$/.test(value),
       AMI_ID: (value: string) => /^ami-[a-f0-9]{17}$/.test(value),
       INSTANCE_TYPES: (value: string) => {
         try {
@@ -288,7 +288,7 @@ export class ValidateEnvironment {
           return false
         }
       },
-      ECR_REGISTRY: (value: string) => /^[0-9]{12}.dkr.ecr.[a-z]{2}-[a-z]+-\d{1}.amazonaws.com$/.test(value),
+      ECR_REGISTRY: (value: string) => /^[0-9]{12}.dkr.ecr.[a-z]{2}-[a-z]+-\d+.amazonaws.com$/.test(value),
       ECR_REPOSITORY_NAME: (value: string) => value.length > 0,
       CODEDEPLOY_APP_NAME: (value: string) => value.length > 0,
       CODEDEPLOY_GROUP_NAME: (value: string) => value.length > 0,
