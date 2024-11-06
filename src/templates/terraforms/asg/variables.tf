@@ -4,6 +4,12 @@ variable "project_name" {
   default     = "autoscaling"
 }
 
+variable "deployment_type" {
+  description = "The deployment type (single or asg)"
+  type        = string
+  default     = "single"
+}
+
 variable "node_env" {
   description = "Node environment (e.g., staging, production)"
   type        = string

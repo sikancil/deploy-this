@@ -37,24 +37,29 @@ resource "aws_launch_template" "app" {
     }
   }
 
-  user_data = base64encode(templatefile("${path.module}/cloud-init.sh", {
-    node_env               = var.node_env
-    project_name           = var.project_name
-    aws_profile            = var.aws_profile
-    aws_account_id         = var.aws_account_id
-    aws_region             = var.aws_region
-    aws_access_key         = var.aws_access_key
-    aws_secret_key         = var.aws_secret_key
+  user_data = base64encode(templatefile(
+    "${path.module}/cloud-init.sh",
+    {
+      node_env               = var.node_env
+      deployment_type        = var.deployment_type
+      project_name           = var.project_name
+      aws_profile            = var.aws_profile
+      aws_account_id         = var.aws_account_id
+      aws_region             = var.aws_region
+      aws_access_key         = var.aws_access_key
+      aws_secret_key         = var.aws_secret_key
+      bitbucket_username     = var.bitbucket_username
+      bitbucket_app_password = var.bitbucket_app_password
+      bitbucket_workspace    = var.bitbucket_workspace
+      bitbucket_branch       = var.bitbucket_branch
+    }
+    
     # codedeploy_app_name    = var.codedeploy_app_name
     # codedeploy_group_name  = var.codedeploy_group_name
     # codedeploy_s3_bucket   = var.codedeploy_s3_bucket
     # ecr_registry           = var.ecr_registry
     # ecr_repository_name    = var.ecr_repository_name
-    bitbucket_username     = var.bitbucket_username
-    bitbucket_app_password = var.bitbucket_app_password
-    bitbucket_workspace    = var.bitbucket_workspace
-    bitbucket_branch       = var.bitbucket_branch
-  }))
+  ))
 
   tag_specifications {
     resource_type = "instance"
