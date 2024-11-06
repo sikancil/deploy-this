@@ -137,11 +137,11 @@ check_prerequisites() {
   ACCOUNT_ID=$(echo "${IDENTITY}" | jq -r '.Account')
   IAM_USER=$(echo "${IDENTITY}" | jq -r '.Arn' | cut -d'/' -f2)
 
-  log "AWS Access Key: ${AWS_ACCESS_KEY}"
-  log "AWS Secret Key: ${AWS_SECRET_KEY}"
-  log "AWS Region: ${AWS_REGION}"
-  log "Account ID: ${ACCOUNT_ID}"
-  log "IAM User: ${IAM_USER}"
+  log "AWS Access Key : ${AWS_ACCESS_KEY}"
+  log "AWS Secret Key : ${AWS_SECRET_KEY}"
+  log "AWS Region     : ${AWS_REGION}"
+  log "AWS Account    : ${ACCOUNT_ID}"
+  log "AWS IAM User   : ${IAM_USER}"
 
   log "Prerequisites check passed"
 }

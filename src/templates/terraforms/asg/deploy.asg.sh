@@ -91,16 +91,16 @@ check_prerequisites() {
     "VPC_ID"
     "IGW_ID"
     "INSTANCE_TYPES"
-    "CODEDEPLOY_APP_NAME"
-    "CODEDEPLOY_GROUP_NAME"
-    "CODEDEPLOY_S3_BUCKET"
-    "ECR_REGISTRY"
-    "ECR_REPOSITORY_NAME"
     "BITBUCKET_USERNAME",
     "BITBUCKET_APP_PASSWORD"
     "BITBUCKET_WORKSPACE"
     "BITBUCKET_BRANCH"
   )
+  # "ECR_REGISTRY"
+  # "ECR_REPOSITORY_NAME"
+  # "CODEDEPLOY_APP_NAME"
+  # "CODEDEPLOY_GROUP_NAME"
+  # "CODEDEPLOY_S3_BUCKET"
 
   # Source environment variables
   set -a
@@ -169,11 +169,11 @@ check_prerequisites() {
   ACCOUNT_ID=$(echo "${IDENTITY}" | jq -r '.Account')
   IAM_USER=$(echo "${IDENTITY}" | jq -r '.Arn' | cut -d'/' -f2)
 
-  log "AWS Access Key: ${AWS_ACCESS_KEY}"
-  log "AWS Secret Key: ${AWS_SECRET_KEY}"
-  log "AWS Region: ${AWS_REGION}"
-  log "Account ID: ${ACCOUNT_ID}"
-  log "IAM User: ${IAM_USER}"
+  log "AWS Access Key : ${AWS_ACCESS_KEY}"
+  log "AWS Secret Key : ${AWS_SECRET_KEY}"
+  log "AWS Region     : ${AWS_REGION}"
+  log "AWS Account    : ${ACCOUNT_ID}"
+  log "AWS IAM User   : ${IAM_USER}"
 
   log "Prerequisites check passed"
 }
