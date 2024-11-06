@@ -382,7 +382,7 @@ EOF
     # Check if variable exists
     if [[ "${repo_vars_http_code}" == "200" ]]; then
       var_uuid=$(echo "${repo_vars_body}" | jq -r ".values[] | select(.key == \"${key}\") | .uuid")
-      log "Deployment Variable ${key}  | UUID: ${var_uuid}"
+      log "Repository Variable ${key}  | UUID: ${var_uuid}"
 
       if [[ -z "$var_uuid" ]]; then
         log "❗️ WARN: Repository Variable '${key}' not found in existing variables."
