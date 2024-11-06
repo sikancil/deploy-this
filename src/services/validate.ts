@@ -267,6 +267,7 @@ export class ValidateEnvironment {
     // Define required variables and their validation rules
     const requiredVars = {
       DEPLOYMENT_TYPE: (value: string) => ["single", "asg"].includes(value),
+      PROJECT_NAME: (value: string) => value.length > 0,
       AWS_PROFILE: (value: string) => value.length > 0,
       AWS_REGION: (value: string) => /^[a-z]{2}-[a-z]+-\d$/.test(value),
       AWS_ACCOUNT_ID: (value: string) => /^[0-9]{12}$/.test(value),
@@ -288,11 +289,12 @@ export class ValidateEnvironment {
           return false
         }
       },
-      ECR_REGISTRY: (value: string) => /^[0-9]{12}.dkr.ecr.[a-z]{2}-[a-z]+-\d+.amazonaws.com$/.test(value),
-      ECR_REPOSITORY_NAME: (value: string) => value.length > 0,
-      CODEDEPLOY_APP_NAME: (value: string) => value.length > 0,
-      CODEDEPLOY_GROUP_NAME: (value: string) => value.length > 0,
-      CODEDEPLOY_S3_BUCKET: (value: string) => value.length > 0,
+      // ECR_REGISTRY: (value: string) => /^[0-9]{12}.dkr.ecr.[a-z]{2}-[a-z]+-\d+.amazonaws.com$/.test(value),
+      // ECR_REPOSITORY_NAME: (value: string) => value.length > 0,
+      // CODEDEPLOY_APP_NAME: (value: string) => value.length > 0,
+      // CODEDEPLOY_GROUP_NAME: (value: string) => value.length > 0,
+      // CODEDEPLOY_S3_BUCKET: (value: string) => value.length > 0,
+      BITBUCKET_USERNAME: (value: string) => value.length > 0,
       BITBUCKET_APP_PASSWORD: (value: string) => value.length > 0,
       BITBUCKET_WORKSPACE: (value: string) => value.length > 0,
       BITBUCKET_BRANCH: (value: string) => value.length > 0,
@@ -365,16 +367,18 @@ export class ValidateEnvironment {
     for (const [tool, version] of Object.entries(requiredTools)) {
       try {
         const toolVersion = await execAsync(`${tool} --version`)
-        // const reExtractVersion = /\d+\.\d+\.\d+/gi
         // version may contain alphanumeric characters, hyphens, periods, underscores, and max 4 segments
+        // const reExtractVersion = /\d+\.\d+\.\d+/gi
         const reExtractVersion = /\d+\.\d+\.\d+(?:-\w+)?/gi
+        
         const extractVersion = reExtractVersion.exec(toolVersion.stdout.trim().replace("\n", ""))
+        const extractedVersion = (extractVersion?.[0] as string).replace(" ", "")
+        
         // const isVersionSatisfied: boolean = !compare(
         //   extractVersion?.[0] as string,
         //   version.version,
         //   version.requirement as CompareOperator,
         // )
-        const extractedVersion = (extractVersion?.[0] as string).replace(" ", "")
         const isVersionSatisfied: boolean = satisfies(
           extractedVersion,
           `${version.requirement}${version.version}`,
