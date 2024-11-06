@@ -82,16 +82,22 @@ EOF
 log "Exporting variables"
 cat << EOF > /home/ubuntu/.env.vm
 NODE_ENV=${node_env}
+DEPLOYMENT_TYPE=${deployment_type}
+PROJECT_NAME=${project_name}
+
 AWS_PROFILE=${aws_profile}
 AWS_REGION=${aws_region}
 AWS_ACCOUNT_ID=${aws_account_id}
 AWS_ACCESS_KEY=${aws_access_key}
 AWS_SECRET_KEY=${aws_secret_key}
-ECR_REGISTRY=${aws_account_id}.dkr.ecr.${aws_region}.amazonaws.com
-ECR_REPOSITORY_NAME=${project_name}
-CODEDEPLOY_APP_NAME=${codedeploy_app_name}
-CODEDEPLOY_GROUP_NAME=${codedeploy_group_name}
-CODEDEPLOY_S3_BUCKET=${codedeploy_s3_bucket}
+
+ECR_REGISTRY_URL=${aws_account_id}.dkr.ecr.${aws_region}.amazonaws.com/${project_name}
+
+CODEDEPLOY_APP_NAME=${project_name}-cd
+CODEDEPLOY_GROUP_NAME=${project_name}-cd-dg
+CODEDEPLOY_S3_BUCKET=${project_name}-artifacts
+
+BITBUCKET_USERNAME=${bitbucket_username}
 BITBUCKET_APP_PASSWORD=${bitbucket_app_password}
 BITBUCKET_WORKSPACE=${bitbucket_workspace}
 BITBUCKET_BRANCH=${bitbucket_branch}

@@ -26,7 +26,8 @@ pipelines:
           services:
             - docker
           script:
-            - export IMAGE_NAME=$ECR_REGISTRY/$ECR_REPOSITORY_NAME
+            # - export IMAGE_NAME=$ECR_REGISTRY/$ECR_REPOSITORY_NAME
+            - export IMAGE_NAME="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}"
             - export IMAGE_TAG=${BITBUCKET_COMMIT:0:7}
             - pipe: atlassian/aws-ecr-push-image:1.5.0
               variables:
@@ -43,9 +44,12 @@ pipelines:
                 AWS_DEFAULT_REGION: $AWS_REGION
                 AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
                 AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
-                APPLICATION_NAME: $CODEDEPLOY_APP_NAME
-                DEPLOYMENT_GROUP: $CODEDEPLOY_GROUP_NAME
-                S3_BUCKET: $CODEDEPLOY_S3_BUCKET
+                # APPLICATION_NAME: $CODEDEPLOY_APP_NAME
+                # DEPLOYMENT_GROUP: $CODEDEPLOY_GROUP_NAME
+                # S3_BUCKET: $CODEDEPLOY_S3_BUCKET
+                APPLICATION_NAME: "${PROJECT_NAME}-cd"
+                DEPLOYMENT_GROUP: "${PROJECT_NAME}-cd-dg"
+                S3_BUCKET: "${PROJECT_NAME}-artifacts"
                 COMMAND: 'deploy'
                 VERSION_LABEL: $BITBUCKET_BUILD_NUMBER
                 WAIT: 'true'
@@ -67,7 +71,8 @@ pipelines:
           services:
             - docker
           script:
-            - export IMAGE_NAME=$ECR_REGISTRY/$ECR_REPOSITORY_NAME
+            # - export IMAGE_NAME=$ECR_REGISTRY/$ECR_REPOSITORY_NAME
+            - export IMAGE_NAME="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}"
             - export IMAGE_TAG=${BITBUCKET_TAG}
             - pipe: atlassian/aws-ecr-push-image:1.5.0
               variables:
@@ -84,9 +89,12 @@ pipelines:
                 AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
                 AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
                 AWS_DEFAULT_REGION: $AWS_REGION
-                APPLICATION_NAME: $CODEDEPLOY_APP_NAME
-                DEPLOYMENT_GROUP: $CODEDEPLOY_GROUP_NAME
-                S3_BUCKET: $CODEDEPLOY_S3_BUCKET
+                # APPLICATION_NAME: $CODEDEPLOY_APP_NAME
+                # DEPLOYMENT_GROUP: $CODEDEPLOY_GROUP_NAME
+                # S3_BUCKET: $CODEDEPLOY_S3_BUCKET
+                APPLICATION_NAME: "${PROJECT_NAME}-cd"
+                DEPLOYMENT_GROUP: "${PROJECT_NAME}-cd-dg"
+                S3_BUCKET: "${PROJECT_NAME}-artifacts"
                 COMMAND: 'deploy'
                 VERSION_LABEL: $BITBUCKET_TAG
                 WAIT: 'true'
