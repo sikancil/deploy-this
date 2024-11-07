@@ -3,10 +3,10 @@ import {
   DescribeInstancesCommand,
   DescribeInstancesCommandOutput,
 } from "@aws-sdk/client-ec2"
-import { loadConfig } from "../utils/config.loader"
+import { Configuration } from "../utils/configuration"
 
 export async function run(): Promise<void> {
-  const config = await loadConfig()
+  const config = await Configuration.getConfig()
   const ec2Client = new EC2Client({ region: config.AWS_REGION })
 
   try {

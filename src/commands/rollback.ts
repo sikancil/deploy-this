@@ -1,7 +1,8 @@
 import prompts from "prompts"
-import { DestroyType, Rollback } from "../services/rollback"
+import { Rollback } from "../services/rollback"
 import { ValidateEnvironment } from "../services/validate"
 import { handleError } from "../utils/error.handler"
+import { DestroyType } from "../interfaces/common"
 
 export async function run(targetEnvironment?: string, destroyType?: string, force: boolean = false): Promise<void> {
   try {
