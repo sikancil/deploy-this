@@ -14,7 +14,7 @@ import {
   User,
 } from "@aws-sdk/client-iam"
 import _ from "lodash"
-import { loadConfig } from "../utils/config.loader"
+import { Configuration } from "../utils/configuration"
 
 export class IAMService {
   private iamClient: IAMClient | undefined
@@ -22,7 +22,7 @@ export class IAMService {
   constructor() {}
 
   public async initialize() {
-    const config = await loadConfig()
+    const config = await Configuration.getConfig()
     this.iamClient = new IAMClient({
       region: config.AWS_REGION,
       credentials: {

@@ -1,6 +1,8 @@
 import fs from "node:fs"
 import path from "node:path"
 import prompts from "prompts"
+import { ShellPrompts } from "../utils/shell.prompts"
+import { DeploymentType } from "../interfaces/common"
 import { ObjectType } from "../utils/object"
 
 // NOTE: This class handles the initialization of the project, creating necessary directories and files for Terraform configurations.
@@ -8,14 +10,14 @@ import { ObjectType } from "../utils/object"
 export class Init {
   private projectRoot: string
   private targetEnvironment: string | undefined
-  private deploymentType: string | undefined
+  private deploymentType: DeploymentType | string | undefined
   private force: boolean
 
   // NOTE: Constructor initializes the Init class with project root, target environment, deployment type, and a force flag.
   constructor(
     projectRoot: string,
     targetEnvironment: string | undefined,
-    deploymentType: string | undefined,
+    deploymentType: DeploymentType | string | undefined,
     force: boolean = false,
   ) {
     this.projectRoot = projectRoot
@@ -28,7 +30,7 @@ export class Init {
   async run(): Promise<void> {
     await this.createTerraformDirectories(this.targetEnvironment, this.deploymentType, this.force)
     console.log()
-    
+
     console.info("👍 Initialization completed successfully 🙌.\n")
 
     console.info(`👉 Next steps:`)
@@ -39,7 +41,9 @@ export class Init {
       `  2. Review and update ".env.dt.${this.targetEnvironment}" file with correct credentials and other configurations.`,
     )
     console.info(`     🎯 ${this.projectRoot}/.env.dt.${this.targetEnvironment}\n`)
-    console.info(`  3. Run command with "deploy" option to start the deployment for current stage environment.`)
+    console.info(
+      `  3. Run command with "deploy" option to start the deployment for current stage environment.`,
+    )
   }
 
   // NOTE: This method creates the necessary directories for Terraform configurations based on the target environment and deployment type.
@@ -48,11 +52,21 @@ export class Init {
   // It interacts with the file system (fs) and path manipulation (path).
   private async createTerraformDirectories(
     targetEnvironment: string | undefined,
-    deploymentType: string | undefined,
+    deploymentType: DeploymentType | string | undefined,
     force: boolean,
   ): Promise<void> {
-    targetEnvironment = await this.promptForTargetEnvironment(targetEnvironment)
-    deploymentType = await this.promptForDeploymentType(deploymentType)
+    targetEnvironment = await ShellPrompts.promptForTargetEnvironment(targetEnvironment)
+
+    if (
+      !ObjectType.isEmpty(deploymentType) &&
+      ((deploymentType as unknown as DeploymentType) !== DeploymentType.SINGLE &&
+        (deploymentType as unknown as DeploymentType) !== DeploymentType.ASG)
+    ) {
+      console.error(`Invalid "deploymentType" value (${Object.values(DeploymentType).join(", ")})`)
+      process.exit(1)
+    }
+
+    deploymentType = await ShellPrompts.selectDeploymentType(deploymentType)
 
     if (deploymentType === "exit") {
       console.log("Exiting...")
@@ -75,55 +89,6 @@ export class Init {
       targetEnvironment as string,
       deploymentType as string,
     )
-  }
-
-  private async promptForTargetEnvironment(
-    targetEnvironment: string | undefined,
-  ): Promise<string | undefined> {
-    if (ObjectType.isEmpty(targetEnvironment)) {
-      const response = await prompts({
-        type: "text",
-        name: "targetEnvironment",
-        message: "Enter target environment (staging or production):",
-        validate: (value) =>
-          ["staging", "production"].includes(value)
-            ? true
-            : "Please enter either 'staging' or 'production'",
-      })
-
-      if (ObjectType.isEmpty(response.targetEnvironment)) {
-        console.error("Target environment is required.")
-        process.exit(1)
-      }
-
-      targetEnvironment = response.targetEnvironment
-    }
-    return targetEnvironment
-  }
-
-  private async promptForDeploymentType(
-    deploymentType: string | undefined,
-  ): Promise<string | undefined> {
-    if (ObjectType.isEmpty(deploymentType)) {
-      const response = await prompts({
-        type: "select",
-        name: "deploymentType",
-        message: "Select deployment type:",
-        choices: [
-          { title: "single", value: "single" },
-          { title: "asg", value: "asg" },
-          { title: "exit", value: "exit" },
-        ],
-      })
-
-      if (ObjectType.isEmpty(response.deploymentType)) {
-        console.error("Deployment type is required.")
-        process.exit(1)
-      }
-
-      deploymentType = response.deploymentType
-    }
-    return deploymentType
   }
 
   private async ensureTerraformDirectory(terraformDir: string, force: boolean): Promise<void> {
@@ -168,14 +133,14 @@ export class Init {
     for (const file of files) {
       if (file.endsWith(".tf") || file.endsWith(".sh") || file.endsWith(".md")) {
         const templateContent = fs.readFileSync(path.join(templateDir, file), "utf8")
-        
+
         // const renderedContent = this.renderTemplate(templateContent, {
         //   targetEnvironment: targetEnvironment,
         //   deploymentType: deploymentType,
         //   // Add more variables as needed
         // })
         // fs.writeFileSync(path.join(terraformDir, file), renderedContent)
-        
+
         fs.writeFileSync(path.join(terraformDir, file), templateContent)
         console.log(`${file} created in ${terraformDir}`)
       }

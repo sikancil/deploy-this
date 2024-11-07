@@ -1,21 +1,12 @@
 import * as fs from "node:fs"
 import * as path from "node:path"
 import { execSync } from "node:child_process"
-import dotenv from "dotenv"
 import prompts from "prompts"
-import {
-  EC2Client,
-  DescribeVpcsCommand,
-  DescribeInternetGatewaysCommand,
-  DescribeVpcsResult,
-  DescribeInternetGatewaysResult,
-} from "@aws-sdk/client-ec2"
-import _ from "lodash"
-import { TFState } from "../interfaces/tfstate"
+import { EC2Client } from "@aws-sdk/client-ec2"
 import { ObjectType } from "../utils/object"
-import { patchEnvs } from "../utils/env"
-
-// dotenv.config()
+import { ShellPrompts } from "../utils/shell.prompts"
+import { Validation } from "../utils/validation"
+import { Configuration } from "../utils/configuration"
 
 // Deploy class handles the deployment of infrastructure using Terraform.
 // NOTE: It interacts with environment variables, Terraform state files, and executes Terraform commands.
@@ -23,7 +14,6 @@ export class Deploy {
   private projectRoot: string
   private targetEnvironment: string
   private deploymentType: string | undefined
-  private terraformDir: string
   private enVars: { [key: string]: string }
   private tfVars: string[]
 
@@ -34,7 +24,7 @@ export class Deploy {
   constructor(targetEnvironment: string, createNewVpc: boolean = false) {
     this.projectRoot = process.cwd()
     this.targetEnvironment = targetEnvironment
-    this.terraformDir = ""
+    // this.terraformDir = ""
     this.enVars = {}
     this.tfVars = []
 
@@ -49,25 +39,26 @@ export class Deploy {
   }> {
     // If targetEnvironment is not provided, it prompts the user to select one.
     if (!this.targetEnvironment) {
-      this.targetEnvironment = await this.selectTargetEnvironment()
+      this.targetEnvironment = await ShellPrompts.selectTargetEnvironment()
     }
 
     console.info(`🚀 Starting deployment into ${this.targetEnvironment}...`)
     console.info(`👁️ ${this.projectRoot}`)
 
     // Retrieves environment variables and Terraform variables from checkEnvironmentVariables().
-    const { enVars, tfVars } = this.checkEnvironmentVariables()
+    const { enVars, tfVars } = Validation.checkEnvironmentVariables()
     this.enVars = enVars
     this.tfVars = tfVars
 
     // Sets the Terraform directory based on the project root and target environment.
-    this.terraformDir = path.join(this.projectRoot, ".terraforms", this.targetEnvironment)
+    // this.terraformDir = path.join(this.projectRoot, ".terraforms", this.targetEnvironment)
+    const terraformDir = Configuration.getTerraformDir(this.targetEnvironment)
 
     // Determines the deployment type based on the files present in the Terraform directory.
-    this.deploymentType = this.checkDeploymentType(this.terraformDir)
+    this.deploymentType = Validation.checkDeploymentType(this.targetEnvironment)
 
     // Changes the current working directory to the Terraform directory.
-    process.chdir(this.terraformDir)
+    process.chdir(terraformDir)
 
     const ec2Client = new EC2Client({
       region: this.enVars.AWS_REGION,
@@ -85,7 +76,7 @@ export class Deploy {
       this.runInit()
 
       // Get current VPC and IGW IDs from Terraform state
-      const checkTfStateResult = this.checkTfState()
+      const checkTfStateResult = Validation.checkTfState(this.targetEnvironment)
 
       let vpcStateValid = undefined
       let igwStateValid = undefined
@@ -102,7 +93,7 @@ export class Deploy {
 
         // Imports existing VPC if it's not already managed by Terraform state.
         if (ObjectType.isEmpty(checkTfStateResult.vpcExists)) {
-          const vpcResource = await this.checkAwsVpc(ec2Client, [
+          const vpcResource = await Validation.checkAwsVpc(ec2Client, [
             checkTfStateResult.vpcExists as string,
           ])
           vpcStateValid = vpcResource.valid ? vpcResource.id : undefined
@@ -111,7 +102,7 @@ export class Deploy {
 
         // Imports existing IGW if it's not already managed by Terraform state.
         if (ObjectType.isEmpty(checkTfStateResult.igwExists)) {
-          const igwResource = await this.checkAwsIgw(ec2Client, [
+          const igwResource = await Validation.checkAwsIgw(ec2Client, [
             checkTfStateResult.igwExists as string,
           ])
           igwStateValid = igwResource.valid ? igwResource.id : undefined
@@ -119,12 +110,12 @@ export class Deploy {
         }
 
         if (!ObjectType.isEmpty(this.enVars.VPC_ID)) {
-          const vpcResource = await this.checkAwsVpc(ec2Client, [this.enVars.VPC_ID])
+          const vpcResource = await Validation.checkAwsVpc(ec2Client, [this.enVars.VPC_ID])
           vpcConfigValid = vpcResource.valid ? vpcResource.id : undefined
         }
 
         if (!ObjectType.isEmpty(this.enVars.IGW_ID)) {
-          const igwResource = await this.checkAwsIgw(ec2Client, [this.enVars.IGW_ID])
+          const igwResource = await Validation.checkAwsIgw(ec2Client, [this.enVars.IGW_ID])
           igwConfigValid = igwResource.valid ? igwResource.id : undefined
         }
 
@@ -145,7 +136,7 @@ export class Deploy {
         // When State is invalid and Configured is invalid, use Configured, remove State, do not import terraform resources
         if (vpcStateValid && igwStateValid) {
           // Update values in .env.dt.{targetEnvironment}
-          this.updateEnvFile(this.targetEnvironment, {
+          Configuration.updateEnvFile(this.targetEnvironment, {
             VPC_ID: checkTfStateResult.vpcExists as string,
             IGW_ID: checkTfStateResult.igwExists as string,
           })
@@ -166,9 +157,9 @@ export class Deploy {
             console.warn(`👉 Now will trying to import resources from configured variables...`)
 
             // Rename to backup Terraform state file
-            const tfStateFile = path.join(this.terraformDir, "terraform.tfstate")
+            const tfStateFile = path.join(terraformDir, "terraform.tfstate")
             const backupStateFile = path.join(
-              this.terraformDir,
+              terraformDir,
               `terraform.tfstate.${Date.now()}.backup`,
             )
             fs.renameSync(tfStateFile, backupStateFile)
@@ -210,7 +201,7 @@ export class Deploy {
         refresh: true,
         refreshOnly: false,
         generateConfig: false,
-        planFile: path.join(this.terraformDir, "infra.plan"),
+        planFile: path.join(terraformDir, "infra.plan"),
       })
       console.log()
 
@@ -227,11 +218,11 @@ export class Deploy {
       // console.log()
 
       // TODO: when successful, read terraform tfstate and update .env.dt.${NODE_ENV} file, then return vpcId and igwId
-      const succeededState = this.checkTfState()
+      const succeededState = Validation.checkTfState(this.targetEnvironment)
       const appliedVpcId = succeededState.vpcExists as string
       const appliedIgwId = succeededState.igwExists as string
 
-      this.updateEnvFile(this.targetEnvironment, {
+      Configuration.updateEnvFile(this.targetEnvironment, {
         VPC_ID: appliedVpcId,
         IGW_ID: appliedIgwId,
       })
@@ -242,282 +233,6 @@ export class Deploy {
       console.error("❗️ Error executing Terraform:", error)
       process.exit(1)
     }
-  }
-
-  // checkTargetEnvironment checks for the existence of .terraforms directory and its contents.
-  // NOTE: It throws an error if the directory or its contents are missing.  Interacts with the file system.
-  private checkTargetEnvironment(): string[] {
-    // Check in Project root directory for .terraforms directory
-    const dotTerraformsDir = path.join(this.projectRoot, ".terraforms")
-    if (!fs.existsSync(dotTerraformsDir)) {
-      throw new Error(".terraforms not exists for any environments.")
-    }
-
-    // Check if .terraforms directory has some target environments
-    const targetEnvironments = fs.readdirSync(path.join(this.projectRoot, ".terraforms"))
-
-    if (ObjectType.isEmpty(targetEnvironments)) {
-      throw new Error(".terraforms has no initialized target environments.")
-    }
-
-    return targetEnvironments
-  }
-
-  // selectTargetEnvironment prompts the user to select a target environment from available options.
-  // NOTE: It uses the prompts library to create an interactive selection menu. Interacts with the user.
-  private async selectTargetEnvironment(): Promise<string> {
-    const response = await prompts({
-      type: "select",
-      name: "selectedEnvironment",
-      message: "Select target environment:",
-      choices: this.checkTargetEnvironment()
-        .concat("exit")
-        .map((targetEnvironment) => {
-          return {
-            title: targetEnvironment,
-            value: targetEnvironment,
-          }
-        }),
-    })
-
-    if (response.selectedEnvironment === "exit") {
-      console.log("Exiting...")
-      process.exit(0)
-    }
-    return response.selectedEnvironment
-  }
-
-  // checkDeploymentType checks for the deployment type (SINGLE.md or ASG.md) in the Terraform directory.
-  // NOTE: It throws an error if the deployment type is not found or ambiguous. Interacts with the file system.
-  private checkDeploymentType(terraformDir: string): string {
-    const deploymentTypes = fs.readdirSync(terraformDir)
-    if (ObjectType.isEmpty(deploymentTypes)) {
-      throw new Error(`No deployment types found in ${terraformDir}`)
-    }
-
-    // check if deploymentTypes contains "SINGLE.md" or "ASG.md"
-    const deploymentTypeFiles = deploymentTypes.filter((file) => file.endsWith(".md"))
-
-    if (ObjectType.isEmpty(deploymentTypeFiles) || deploymentTypeFiles.length !== 1) {
-      throw new Error(
-        `Unknown deployment type in ${terraformDir}. Missing one between SINGLE.md and ASG.md`,
-      )
-    }
-
-    return deploymentTypes[0]
-  }
-
-  // selectDeploymentType prompts the user to select a deployment type (single or asg).
-  // NOTE: It uses the prompts library to create an interactive selection menu. Interacts with the user.
-  private async selectDeploymentType(): Promise<string> {
-    const response = await prompts({
-      type: "select",
-      name: "deploymentType",
-      message: "Select deployment type:",
-      choices: [
-        { title: "single", value: "single" },
-        { title: "asg", value: "asg" },
-        { title: "exit", value: "exit" },
-      ],
-    })
-
-    if (response.deploymentType === "exit") {
-      console.log("Exiting...")
-      process.exit(0)
-    }
-    return response.deploymentType
-  }
-
-  private updateEnvFile(targetEnvironment: string, updates: Record<string, string>): void {
-    if (ObjectType.isEmpty(targetEnvironment)) {
-      console.warn(`❌ Target environment is empty (${targetEnvironment}). Skipping update.`)
-      return
-    }
-
-    const envFile = path.join(this.projectRoot, `.env.dt.${targetEnvironment}`)
-    console.log(`📝 Updating ${envFile}...`)
-    let content = fs.readFileSync(envFile, "utf8")
-
-    Object.entries(updates).forEach(([key, value]) => {
-      const regex = new RegExp(`^${key}=.*$`, "m")
-      if (content.match(regex)) {
-        content = content.replace(regex, `${key}="${value}"`)
-      } else {
-        content += `\n${key}="${value}"`
-      }
-    })
-
-    fs.writeFileSync(envFile, content)
-  }
-
-  // checkEnvironmentVariables checks for required and optional environment variables.
-  // NOTE: It reads environment variables from .env and .env.dt.<NODE_ENV> files.  Interacts with the file system and environment variables.
-  private checkEnvironmentVariables(): { enVars: { [key: string]: string }; tfVars: string[] } {
-    let NODE_ENV = process.env.NODE_ENV
-    let dotEnv: dotenv.DotenvParseOutput = {}
-
-    if (ObjectType.isEmpty(NODE_ENV)) {
-      const envFile = path.join(this.projectRoot, ".env")
-
-      if (!fs.existsSync(envFile)) {
-        console.error(`${envFile} file not found. Please create it.`)
-        process.exit(1)
-      } else {
-        // dotEnv = dotenv.parse(fs.readFileSync(envFile))
-        dotEnv = patchEnvs(envFile)
-        console.log(`✅ .env`)
-      }
-
-      process.env.NODE_ENV = dotEnv.NODE_ENV
-      NODE_ENV = dotEnv.NODE_ENV
-    } else {
-      dotEnv["NODE_ENV"] = process.env.NODE_ENV as string
-    }
-
-    const dtEnvFile = path.join(this.projectRoot, `.env.dt.${NODE_ENV}`)
-
-    let dtEnv: dotenv.DotenvParseOutput
-    if (!fs.existsSync(dtEnvFile)) {
-      console.warn(`WARN: ${dtEnvFile} file not found. Please create it.`)
-      dtEnv = {}
-    } else {
-      // dtEnv = dotenv.parse(fs.readFileSync(dtEnvFile))
-      dtEnv = patchEnvs(dtEnvFile)
-      console.log(`✅ .env.dt.${NODE_ENV}\n`)
-    }
-
-    const requiredEnvVars = ["NODE_ENV"]
-    const requiredDtEnvVars = [
-      "DEPLOYMENT_TYPE",
-      "PROJECT_NAME",
-
-      "AWS_PROFILE",
-      "AWS_REGION",
-      "AWS_ACCOUNT_ID",
-      "AWS_ACCESS_KEY",
-      "AWS_SECRET_KEY",
-      
-      "VPC_ID",
-      "IGW_ID",
-      
-      "AMI_ID",
-      "INSTANCE_TYPES",
-      
-      // "ECR_REGISTRY",
-      // "ECR_REPOSITORY_NAME",
-      
-      // "CODEDEPLOY_APP_NAME",
-      // "CODEDEPLOY_GROUP_NAME",
-      // "CODEDEPLOY_S3_BUCKET",
-      
-      "BITBUCKET_APP_PASSWORD",
-      "BITBUCKET_WORKSPACE",
-      "BITBUCKET_BRANCH",
-    ]
-
-    if (this.deploymentType === "asg") {
-      requiredDtEnvVars.push("SSL_CERTIFICATE_ARN")
-    }
-
-    const envs = { ...dotEnv, ...dtEnv }
-    requiredEnvVars.concat(requiredDtEnvVars).forEach((varName) => {
-      console.info(
-        `${envs[varName] ? `🔹` : `🔸`} ${varName}`.padEnd(40, " ") + `: ${envs[varName]}`,
-      )
-    })
-
-    const missingVars = requiredEnvVars.concat(requiredDtEnvVars).filter((varName) => {
-      return !envs[varName]
-    })
-
-    if (missingVars.length > 0) {
-      console.error(`Some variables are not set in required environment files:`)
-      missingVars.forEach((varName) => console.error(`- ${varName}`))
-      process.exit(1)
-    }
-    console.info(`✅ Required environment variables are set.\n`)
-
-    // The rest of the variables are optional
-    const optionalVars = Object.keys(envs).filter(
-      (key) => !requiredEnvVars.concat(requiredDtEnvVars).includes(key),
-    )
-    optionalVars.forEach((varName) => {
-      console.info(
-        `${envs[varName] ? `💧` : `🩸`} ${varName}`.padEnd(40, " ") + `: ${envs[varName]}`,
-      )
-    })
-    console.info(`✅ Optional environment variables are set.\n`)
-
-    // Set Terraform environment variables
-    const expTfVars: string[] = Object.keys(envs).map((key) => {
-      const value = envs[key]
-      if (key === "INSTANCE_TYPES") {
-        process.env[`TF_VAR_instance_types`] = value
-        return `TF_VAR_instance_types=${value}`
-      } else {
-        process.env[`TF_VAR_${key.toLowerCase()}`] = value
-        return `TF_VAR_${key.toLowerCase()}=${value}`
-      }
-    })
-
-    return { enVars: envs, tfVars: expTfVars }
-  }
-
-  private async checkAwsVpc(
-    ec2Client: EC2Client,
-    vpcIds: string[],
-  ): Promise<{ valid: boolean; id: string | undefined }> {
-    if (
-      ObjectType.isEmpty(
-        _.compact(vpcIds).map((id) => (ObjectType.isEmpty(id.trim()) ? undefined : id.trim())),
-      )
-    ) {
-      return { valid: false, id: undefined }
-    }
-
-    try {
-      const command = new DescribeVpcsCommand({ VpcIds: vpcIds })
-      const response: DescribeVpcsResult = await ec2Client.send(command)
-      const resource = (response as DescribeVpcsResult).Vpcs?.[0]?.VpcId || undefined
-      return { valid: !!resource, id: resource?.toString() }
-    } catch (error) {
-      return { valid: false, id: undefined }
-    }
-  }
-
-  private async checkAwsIgw(
-    ec2Client: EC2Client,
-    igwIds: string[],
-  ): Promise<{ valid: boolean; id: string | undefined }> {
-    if (
-      ObjectType.isEmpty(
-        _.compact(igwIds).map((id) => (ObjectType.isEmpty(id.trim()) ? undefined : id.trim())),
-      )
-    ) {
-      return { valid: false, id: undefined }
-    }
-
-    try {
-      const command = new DescribeInternetGatewaysCommand({ InternetGatewayIds: igwIds })
-      const response: DescribeInternetGatewaysResult = await ec2Client.send(command)
-      const resource =
-        (response as DescribeInternetGatewaysResult).InternetGateways?.[0]?.InternetGatewayId ||
-        undefined
-      return { valid: !!resource, id: resource?.toString() }
-    } catch (error) {
-      return { valid: false, id: undefined }
-    }
-  }
-
-  private async checkAwsVpcIgw(
-    ec2Client: EC2Client,
-    vpcId: string,
-    igwId: string,
-  ): Promise<{ valid: boolean; vpcId: string | undefined; igwId: string | undefined }> {
-    const vpc = await this.checkAwsVpc(ec2Client, [vpcId])
-    const igw = await this.checkAwsIgw(ec2Client, [igwId])
-
-    return { valid: vpc.valid && igw.valid, vpcId: vpc.id, igwId: igw.id }
   }
 
   // runInit initializes the Terraform project.
@@ -533,55 +248,6 @@ export class Deploy {
       } else {
         console.error("❗️ Unknown error initializing Terraform:", (error as Buffer).toString())
       }
-    }
-  }
-
-  // checkTfState checks the Terraform state file for existing resources (VPC and IGW).
-  // NOTE: It parses the state file and returns information about the existence of resources. Interacts with the file system and Terraform state file.
-  private checkTfState(): {
-    tfStateExists: string | null | undefined
-    vpcExists: string | null | undefined
-    igwExists: string | null | undefined
-  } {
-    try {
-      const stateFile = fs.readdirSync(this.terraformDir).find((file) => file.endsWith(".tfstate"))
-
-      if (!ObjectType.isEmpty(stateFile)) {
-        try {
-          const fileTfState = fs.readFileSync(
-            path.join(this.terraformDir, stateFile as string),
-            "utf8",
-          )
-          const tfState = JSON.parse(fileTfState) as TFState
-
-          const vpcs = (tfState?.resources || [])?.filter(
-            (resource) => resource?.type === "aws_vpc" || resource?.name === "VPC",
-          )
-          // const vpcId = vpcs.find((vpc) => (vpc?.instances || [])?.find((instance) => instance?.attributes?.id === this.enVars.VPC_ID))
-          //   ?.instances?.[0]?.attributes?.id
-          const vpcId = vpcs.find((vpc) => (vpc?.instances || [])?.find((instance) => instance?.attributes?.id))
-            ?.instances?.[0]?.attributes?.id
-
-          const igws = (tfState?.resources || [])?.filter(
-            (resource) =>
-              resource?.type === "aws_internet_gateway" || resource?.name === "InternetGateway",
-          )
-          // const igwId = igws.find((igw) => (igw?.instances || [])?.find((instance) => instance?.attributes?.id === this.enVars.IGW_ID))
-          //   ?.instances?.[0]?.attributes?.id
-          const igwId = igws.find((igw) => (igw?.instances || [])?.find((instance) => instance?.attributes?.id))
-            ?.instances?.[0]?.attributes?.id
-
-          return { tfStateExists: stateFile, vpcExists: vpcId, igwExists: igwId }
-        } catch (error) {
-          console.error("❗️ Error checking resources in Terraform state:", error as Error)
-          return { tfStateExists: stateFile, vpcExists: null, igwExists: null }
-        }
-      } else {
-        return { tfStateExists: undefined, vpcExists: undefined, igwExists: undefined }
-      }
-    } catch (error) {
-      console.error("❗️ Error checking Terraform state:", error as Error)
-      return { tfStateExists: null, vpcExists: null, igwExists: null }
     }
   }
 
