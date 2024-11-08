@@ -11,6 +11,7 @@ import { run as cmdStatus } from "./commands/status"
 import { run as cmdRollback } from "./commands/rollback"
 import { run as cmdIAM } from "./commands/iam"
 import { run as cmdVersion } from "./commands/version"
+import { run as cmdBitbucket } from "./commands/bitbucket"
 
 // Create a new command-line interface (CLI) program
 const program = new Command()
@@ -120,6 +121,9 @@ program
       handleError(`Error in IAM command.`, error)
     }
   })
+
+// Add Bitbucket pipelines command
+cmdBitbucket(program)
 
 // Define the 'help' command for displaying help information
 // NOTE: This command displays help information about the CLI program.
