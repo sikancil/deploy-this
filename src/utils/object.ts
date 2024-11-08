@@ -160,6 +160,17 @@ export class ObjectType {
     return o
   }
 
+  public static strToEnum<T extends Record<string, symbol | number | string>>(
+    enumType: T,
+    value: string
+  ): T[keyof T] | undefined {
+    const enumValues = Object.values(enumType);
+    const enumKeys = Object.keys(enumType);
+
+    const index = enumValues.indexOf(value as T[keyof T]);
+    return index !== -1 ? enumKeys[index] as T[keyof T] ? enumValues[index] as T[keyof T] : undefined : undefined;
+  }
+
   // Recursively converts Class object into a plain object. Used for data transformation and normalization.
   public static castFrom(obj: any): { [key: string]: any } {
     if (!this.expect(obj, this.Array) || !this.expect(obj, this.Object)) {
