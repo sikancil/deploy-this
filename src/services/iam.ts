@@ -21,8 +21,8 @@ export class IAMService {
 
   constructor() {}
 
-  public async initialize() {
-    const config = await Configuration.getConfig()
+  public initialize() {
+    const config = Configuration.getConfig()
     this.iamClient = new IAMClient({
       region: config.AWS_REGION,
       credentials: {
