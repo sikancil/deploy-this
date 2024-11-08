@@ -6,7 +6,7 @@ import {
 import { Configuration } from "../utils/configuration"
 
 export async function run(): Promise<void> {
-  const config = await Configuration.getConfig()
+  const config = Configuration.getConfig()
   const ec2Client = new EC2Client({ region: config.AWS_REGION })
 
   try {
