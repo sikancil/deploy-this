@@ -70,7 +70,7 @@ export class Configuration {
     `.env.dt.${this.envConfig.NODE_ENV}`,
   )
 
-  static async getConfig() {
+  static getConfig() {
     const envFile = path.join(this.projectRoot, ".env")
     const envConfig = dotenv.parse(fs.readFileSync(envFile))
 
