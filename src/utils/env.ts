@@ -20,7 +20,8 @@ function loadEnvs(dotEnfFilePath: string): { [key: string]: string } {
 
 export function patchEnvs(
   dotEnfFilePath: string,
-  patches?: NodeJS.ProcessEnv,
+  patches: NodeJS.ProcessEnv | { [key: string]: string } = {},
+  merge: boolean = false
 ): { [key: string]: string } {
   try {
     let keyValues = loadEnvs(dotEnfFilePath)
@@ -31,7 +32,7 @@ export function patchEnvs(
         return process.env[p1] || keyValues[env]
       })
     })
-    keyValues = ObjectType.applyIf(ObjectType.apply(process.env, keyValues), patches || {})
+    keyValues = merge ? ObjectType.applyIf(ObjectType.apply(process.env, keyValues), patches || {}) : ObjectType.applyIf(keyValues, patches || {})
 
     return keyValues
   } catch (error) {
