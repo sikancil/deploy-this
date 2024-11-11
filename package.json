@@ -16,7 +16,7 @@
     "test": "jest --coverage=true --cache=false --runInBand=true --forceExit --detectOpenHandles",
     "lint": "eslint 'src/**/*.ts'",
     "format": "prettier --write 'src/**/*.ts'",
-    "debug": "ts-node src/index.ts",
+    "debug": "DEBUG=1 ts-node src/index.ts",
     "dev": "npm run build ; ts-node src/index.ts",
     "start": "node dist/index.js",
     "watch": "tsc -w",
