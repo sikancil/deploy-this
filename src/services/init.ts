@@ -86,7 +86,13 @@ export class Init {
     await this.generateTerraformFiles(
       terraformDir,
       templateDir,
-      targetEnvironment as string,
+      deploymentType as string,
+    )
+
+    await this.ensureTerraformDirectory(`${terraformDir}/scripts`, force)
+    await this.generateTerraformFiles(
+      `${terraformDir}/scripts`,
+      `${templateDir}/scripts`,
       deploymentType as string,
     )
   }
@@ -95,7 +101,7 @@ export class Init {
     if (fs.existsSync(terraformDir)) {
       const files = fs.readdirSync(terraformDir)
       const hasTerraformFiles = files.some((file) =>
-        [".tf", ".sh", ".md"].some((ext) => file.endsWith(ext)),
+        [".tf", ".yml", ".sh", ".md"].some((ext) => file.endsWith(ext)),
       )
 
       if (hasTerraformFiles && !force) {
@@ -126,20 +132,12 @@ export class Init {
   private async generateTerraformFiles(
     terraformDir: string,
     templateDir: string,
-    targetEnvironment: string,
     deploymentType: string,
   ): Promise<void> {
     const files = fs.readdirSync(templateDir)
     for (const file of files) {
       if (file.endsWith(".tf") || file.endsWith(".sh") || file.endsWith(".md")) {
         const templateContent = fs.readFileSync(path.join(templateDir, file), "utf8")
-
-        // const renderedContent = this.renderTemplate(templateContent, {
-        //   targetEnvironment: targetEnvironment,
-        //   deploymentType: deploymentType,
-        //   // Add more variables as needed
-        // })
-        // fs.writeFileSync(path.join(terraformDir, file), renderedContent)
 
         fs.writeFileSync(path.join(terraformDir, file), templateContent)
         console.log(`${file} created in ${terraformDir}`)
