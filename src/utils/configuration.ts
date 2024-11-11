@@ -1,8 +1,8 @@
 import fs from "node:fs"
 import path from "node:path"
-import dotenv from "dotenv"
 
 import { ObjectType } from "./object"
+import { patchEnvs } from "./env"
 
 export class Configuration {
   static readonly projectVariables = ["NODE_ENV", "PROJECT_NAME"]
@@ -80,7 +80,7 @@ export class Configuration {
       // return {}
       throw new Error(`.env file not found within ${this.projectRoot}`)
     }
-    return dotenv.parse(fs.readFileSync(this.envFile))
+    return patchEnvs(this.envFile) 
   }
 
   static get dtEnvFile(): string {
@@ -92,7 +92,7 @@ export class Configuration {
       // return {}
       throw new Error(`.env.dt${this.envConfig.NODE_ENV} file not found within ${this.projectRoot}`)
     }
-    return dotenv.parse(fs.readFileSync(this.dtEnvFile))
+    return patchEnvs(this.dtEnvFile)
   }
 
   static getConfig() {
