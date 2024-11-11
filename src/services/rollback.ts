@@ -5,7 +5,7 @@ import { execSync } from "node:child_process"
 // import { EC2Client } from "@aws-sdk/client-ec2"
 // import { ObjectType } from "../utils/object"
 import { ShellPrompts } from "../utils/shell.prompts"
-// import { Validation } from "../utils/validation"
+import { Validation } from "../utils/validation"
 // import { Configuration } from "../utils/configuration"
 // import { patchEnvs } from "../utils/env"
 import { handleError } from "../utils/error.handler"
@@ -19,8 +19,8 @@ export class Rollback {
   private destroyType: DestroyType | undefined
   private force: boolean
   private terraformDir: string
-  // private enVars: { [key: string]: string }
-  // private tfVars: string[]
+  private enVars: { [key: string]: string }
+  private tfVars: string[]
 
   constructor(
     targetEnvironment?: string,
@@ -33,8 +33,8 @@ export class Rollback {
     this.destroyType = destroyType
     this.force = force
     this.terraformDir = ""
-    // this.enVars = {}
-    // this.tfVars = []
+    this.enVars = {}
+    this.tfVars = []
   }
 
   async run(): Promise<void> {
@@ -53,9 +53,9 @@ export class Rollback {
       console.info(`👁️ ${this.projectRoot}`)
 
       // Retrieves environment variables and Terraform variables from checkEnvironmentVariables().
-      // const { enVars, tfVars } = Validation.checkEnvironmentVariables()
-      // this.enVars = enVars
-      // this.tfVars = tfVars
+      const { enVars, tfVars } = Validation.checkEnvironmentVariables()
+      this.enVars = enVars
+      this.tfVars = tfVars
 
       // Set terraform directory
       this.terraformDir = path.join(this.projectRoot, ".terraforms", this.targetEnvironment)
