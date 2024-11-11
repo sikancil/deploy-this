@@ -4,7 +4,6 @@
   "description": "A CLI tool for automating AWS infrastructure deployment and Bitbucket pipeline configuration",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "type": "module",
   "bin": {
     "iodt": "dist/index.js"
   },
@@ -25,7 +24,7 @@
     "tf:plan": "cd src/templates/terraforms ; terraform plan",
     "tf:apply": "cd src/templates/terraforms ; terraform apply",
     "tf:destroy": "cd src/templates/terraforms ; terraform destroy",
-    "postbuild": "npm run chmod:bin ; build:ensure-paths ; npm run build:templates",
+    "postbuild": "npm run chmod:bin ; npm run build:templates",
     "prepack": "npm run build",
     "postinstall": "npm run build"
   },
