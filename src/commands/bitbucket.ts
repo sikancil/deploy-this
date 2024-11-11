@@ -5,10 +5,10 @@ import { Configuration } from "../utils/configuration"
 import { ObjectType } from "../utils/object"
 
 // Create subcommands for variables management
-const variablesCommand = new Command("variables").description("Manage Bitbucket Pipeline variables")
+const bitbucketCommands = new Command("variables").description("Manage Bitbucket Pipeline variables")
 
 // List variables command
-variablesCommand
+bitbucketCommands
   .command("list")
   .description("List pipeline variables")
   .option("--stage <stage>", "Stage for deployment variables (staging/production)")
@@ -67,7 +67,7 @@ variablesCommand
   })
 
 // Initialize variables from environment
-variablesCommand
+bitbucketCommands
   .command("init")
   .description("Initialize pipeline variables from environment")
   .action(async () => {
@@ -94,7 +94,7 @@ variablesCommand
   })
 
 // Ensure variable command
-variablesCommand
+bitbucketCommands
   .command("ensure")
   .description("Ensure pipeline variable exists with specified value")
   .requiredOption("--key <key>", "Variable key")
@@ -129,7 +129,7 @@ variablesCommand
   })
 
 // Remove variable command
-variablesCommand
+bitbucketCommands
   .command("remove")
   .description("Remove pipeline variable")
   .requiredOption("--key <key>", "Variable key")
@@ -173,9 +173,4 @@ function createBitbucketService(): BitbucketService {
 }
 
 // Export the variables command
-export const run = (program: Command): void => {
-  program
-    .command("pipelines")
-    .description("Manage Bitbucket Pipelines")
-    .addCommand(variablesCommand)
-}
+export const run = bitbucketCommands
