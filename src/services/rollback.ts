@@ -71,7 +71,9 @@ export class Rollback {
       process.chdir(this.terraformDir)
 
       // Prompt for destroy type
-      const selectedDestroyType = this.destroyType ? this.destroyType : await ShellPrompts.selectDestroyType()
+      const selectedDestroyType = this.destroyType
+        ? this.destroyType
+        : await ShellPrompts.selectDestroyType()
 
       // Initialize terraform
       this.runInit()
@@ -95,7 +97,10 @@ export class Rollback {
     }
   }
 
-  private async runDestroy(destroyType: DestroyType | undefined, force: boolean = false): Promise<void> {
+  private async runDestroy(
+    destroyType: DestroyType | undefined,
+    force: boolean = false,
+  ): Promise<void> {
     try {
       console.info(`Running ${destroyType} destroy...`)
 
@@ -146,7 +151,9 @@ export class Rollback {
         console.info(`Destroying partially (excludes VPC and IGW)...`)
 
         // execSync(`terraform destroy ${targetParamsAtOnce} -auto-approve`, { stdio: "inherit" })
-        execSync(`terraform destroy ${targetParamsAtOnce}${force ? " -auto-approve" : ""}`, { stdio: "inherit" })
+        execSync(`terraform destroy ${targetParamsAtOnce}${force ? " -auto-approve" : ""}`, {
+          stdio: "inherit",
+        })
       } else {
         // Full destroy including VPC and IGW
         // execSync("terraform destroy -auto-approve", { stdio: "inherit" })

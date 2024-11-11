@@ -143,7 +143,7 @@ export class Deploy {
           this.enVars.VPC_ID = checkTfStateResult.vpcExists as string
           this.enVars.IGW_ID = checkTfStateResult.igwExists as string
 
-          if ((vpcConfigValid && igwConfigValid)) {
+          if (vpcConfigValid && igwConfigValid) {
             console.warn(`❗️ Invalid Terraform state and found valid configuration variables.`)
             console.warn(`👉 Now will trying to import resources from configured variables...`)
 
@@ -153,7 +153,7 @@ export class Deploy {
           }
         } else {
           if (vpcConfigValid && igwConfigValid) {
-            console.warn(`❗️ Invalid Terraform state and found valid configuration variables.`) 
+            console.warn(`❗️ Invalid Terraform state and found valid configuration variables.`)
             console.warn(`👉 Now will trying to import resources from configured variables...`)
 
             // Rename to backup Terraform state file

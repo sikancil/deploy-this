@@ -59,8 +59,8 @@ export class Init {
 
     if (
       !ObjectType.isEmpty(deploymentType) &&
-      ((deploymentType as unknown as DeploymentType) !== DeploymentType.SINGLE &&
-        (deploymentType as unknown as DeploymentType) !== DeploymentType.ASG)
+      (deploymentType as unknown as DeploymentType) !== DeploymentType.SINGLE &&
+      (deploymentType as unknown as DeploymentType) !== DeploymentType.ASG
     ) {
       console.error(`Invalid "deploymentType" value (${Object.values(DeploymentType).join(", ")})`)
       process.exit(1)
@@ -83,11 +83,7 @@ export class Init {
     )
 
     await this.ensureTerraformDirectory(terraformDir, force)
-    await this.generateTerraformFiles(
-      terraformDir,
-      templateDir,
-      deploymentType as string,
-    )
+    await this.generateTerraformFiles(terraformDir, templateDir, deploymentType as string)
 
     await this.ensureTerraformDirectory(`${terraformDir}/scripts`, force)
     await this.generateTerraformFiles(

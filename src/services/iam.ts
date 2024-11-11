@@ -72,8 +72,8 @@ export class IAMService {
               const command = new GetUserCommand({ UserName: user.UserName })
               const response = await this.iamClient?.send(command)
               return response?.User
-            })
-          )
+            }),
+          ),
         )
 
         const serviceAccounts = usersWithTags.filter((user) =>
@@ -83,7 +83,7 @@ export class IAMService {
                   (tag) => tag.Key === "ServiceAccount" || tag.Value === "ServiceAccounts",
                 )
               : false
-            : false
+            : false,
         )
 
         if (serviceAccounts.length === 0) {

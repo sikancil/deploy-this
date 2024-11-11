@@ -6,6 +6,7 @@ import { satisfies, compare, CompareOperator } from "compare-versions"
 
 import { ObjectType } from "../utils/object"
 import { patchEnvs } from "../utils/env"
+import { Configuration } from "../utils/configuration"
 
 // Promisify the exec function for asynchronous execution of shell commands.
 const execAsync = promisify(exec)
@@ -16,13 +17,15 @@ export class ValidateEnvironment {
   // Constructor initializes the Deploy class with the target environment.
   // NOTE: It sets the project root directory, target environment, and initializes other properties.
   constructor(projectRoot: string) {
-    this.projectRoot = projectRoot
+    this.projectRoot = projectRoot || Configuration.projectRoot
   }
 
   public async run(): Promise<{ stage: string | undefined }> {
-    const validResult = await this.validates(this.projectRoot, undefined, false)
+    const validResult = await this.validates(undefined, false)
     if (ObjectType.isEmpty(validResult)) {
-      throw new Error("Unknown Stage or Environment")
+      throw new Error(
+        `Checks failed!. Update configuration files, or use "init" command force option "init -f" to assist in creating environment files.`,
+      )
     }
 
     console.info(`Current Stage: ${validResult}`)
@@ -36,60 +39,63 @@ export class ValidateEnvironment {
   // It's the main entry point for environment validation and is called by src/index.ts.
   // It checks for .env, .env.dt.{environment} files, AWS credentials, and required tools.
   public async validates(
-    TARGET_DIR: string,
-    targetEnvironment: string | undefined = undefined,
+    targetStage: string | undefined = undefined,
     doForce: boolean = false,
   ): Promise<string | undefined> {
     const checkPoint: {
       stage?: string | undefined
-      targetEnvironment?: boolean
+      targetStage?: boolean
       dtEnvFile?: boolean
       awsCredentials?: boolean
-      requiredVariables?: boolean
+      requiredVariables?: { valid: boolean; invalid: string[] }
       requiredTools?: boolean
     } = {}
 
     try {
       // Determine the target environment, prioritizing the provided argument, then the NODE_ENV environment variable.
-      targetEnvironment = this.checkTargetEnvironment(TARGET_DIR, targetEnvironment, doForce)
-      checkPoint.targetEnvironment = !!targetEnvironment
+      targetStage = this.checkTargetEnvironment(targetStage, doForce)
+      checkPoint.targetStage = !!targetStage
     } catch (error) {
       console.error("Error checking target environment:", error)
-      checkPoint.targetEnvironment = false
+      checkPoint.targetStage = false
     }
-    checkPoint.stage = targetEnvironment
+    checkPoint.stage = targetStage
     console.info(
-      `${ObjectType.isEmpty(checkPoint.targetEnvironment) ? "❌" : "✅"} Target environment`,
-      checkPoint.targetEnvironment,
+      `${ObjectType.isEmpty(checkPoint.targetStage) ? "❌ Invalid Stage" : "✅ Target stage"}`,
     )
 
     try {
       // Check for and create the .env.dt.{environment} file if it doesn't exist and doForce is true.
-      checkPoint.dtEnvFile = this.checkDtEnvFile(TARGET_DIR, targetEnvironment, doForce)
+      checkPoint.dtEnvFile = this.checkDtEnvFile(targetStage, doForce)
     } catch (error) {
       console.error("Error checking .env.dt.{environment} file:", error)
       checkPoint.dtEnvFile = false
     }
-    console.info(`${checkPoint.dtEnvFile ? "✅" : "❌"} .env.dt.${targetEnvironment}`)
+    console.info(`${checkPoint.dtEnvFile ? "✅ dt Configuration" : "❌ Invalid Configuration"}`)
 
     try {
-      // Validate AWS credentials from the .env.dt.{environment} file.
-      checkPoint.awsCredentials = this.validateAwsCredentials(TARGET_DIR, targetEnvironment)
+      checkPoint.awsCredentials = this.validateAwsCredentials(targetStage)
     } catch (error) {
       console.error("Error validating AWS credentials:", error)
       checkPoint.awsCredentials = false
     }
-    console.info(`${checkPoint.awsCredentials ? "✅" : "❌"} AWS credentials`)
+    console.info(
+      `${checkPoint.awsCredentials ? "✅ AWS credentials" : "❌ Invalid AWS Credentials"}`,
+    )
 
     try {
-      // Validate required environment variables from the .env.dt.{environment} file.
-      checkPoint.requiredVariables = this.validateRequiredVariables(TARGET_DIR, targetEnvironment)
+      checkPoint.requiredVariables = this.validateRequiredVariables(targetStage)
     } catch (error) {
       console.error("Error validating required environment variables:", error)
-      checkPoint.requiredVariables = false
+      checkPoint.requiredVariables = { valid: false, invalid: [(error as Error).message] }
     }
-    console.info(`${checkPoint.requiredVariables ? "✅" : "❌"} Required environment variables`)
+    console.info(
+      checkPoint.requiredVariables.valid
+        ? "✅ Required environment variables"
+        : `❌ Invalid Required Variables:\n   - ${checkPoint.requiredVariables?.invalid.join("\n   - ")}`,
+    )
 
+    console.log()
     try {
       // Asynchronously validate that required tools (node, npm, terraform, aws, docker, git) are installed.
       checkPoint.requiredTools = await this.validateRequiredTools()
@@ -101,75 +107,44 @@ export class ValidateEnvironment {
 
     console.log()
 
-    return Object.values(checkPoint).some((value) => value === false)
-      ? undefined
-      : targetEnvironment
+    return Object.values(checkPoint).some((value) => value === false) ? undefined : targetStage
 
     // return checkPoint.stage
-  }
-
-
-  //=== Private Functions ===//
-
-
-  // NOTE: Checks if the .env file exists in the target directory. If not and doForce is true, it creates one.
-  // Interacts with src/index.ts which calls this function to ensure the .env file exists before proceeding.
-  private checkEnvFile(
-    TARGET_DIR: string,
-    targetEnvironment: string | undefined = undefined,
-    doForce: boolean = false,
-  ): boolean {
-    const targetEnvFile = path.join(TARGET_DIR, ".env")
-    if (!fs.existsSync(targetEnvFile)) {
-      const exampleEnvFile = path.join(__dirname, "../templates/environments/.env-example")
-      if (doForce) {
-        // If targetEnvironment is not specified, copy the example .env file. Otherwise, create a .env file with NODE_ENV set.
-        if (ObjectType.isEmpty(targetEnvironment)) {
-          fs.copyFileSync(exampleEnvFile, targetEnvFile)
-        } else {
-          fs.writeFileSync(targetEnvFile, `NODE_ENV="${targetEnvironment}"\n`, "utf8")
-        }
-      } else {
-        // throw new Error(".env file not found")
-        console.warn("WARN: .env file not found. Use force option -f to create one.")
-        return false
-      }
-    }
-
-    return true
   }
 
   // NOTE: Determines the target environment.  Prioritizes explicitly provided environment, then checks process.env.NODE_ENV,
   // then falls back to creating a .env file if doForce is true.  Called by validateEnvironment and checkDtEnvFile.
   private checkTargetEnvironment(
-    TARGET_DIR: string,
-    targetEnvironment: string | undefined = undefined,
+    targetStage: string | undefined = undefined,
     doForce: boolean = false,
   ): string | undefined {
     // Prioritize explicitly provided environment, then check process.env.NODE_ENV.
-    targetEnvironment = targetEnvironment || process.env.NODE_ENV
+    targetStage = targetStage || process.env.NODE_ENV
 
-    let nodeEnv: string | undefined = targetEnvironment
+    let nodeEnv: string | undefined = targetStage
 
-    const targetEnvFile = path.join(TARGET_DIR, ".env")
-    const targetDotEnvExists = fs.existsSync(targetEnvFile)
-    // If .env file doesn't exist, create it if doForce is true.
-    if (!targetDotEnvExists) {
-      const checkEnvResult = this.checkEnvFile(TARGET_DIR, targetEnvironment, doForce)
-      if (!checkEnvResult) {
+    const targetEnvFile = Configuration.envFile
+    try {
+      const envConfig = Configuration.envConfig
+      nodeEnv = envConfig?.NODE_ENV
+    } catch (error) {
+      if (!doForce) {
+        // console.error(`Error reading .env file: ${(error as Error).message}`)
         return
       }
-    }
 
-    // If targetEnvironment is not set, read NODE_ENV from .env file.
-    if (ObjectType.isEmpty(targetEnvironment)) {
-      const targetDotEnv = patchEnvs(targetEnvFile)
-      nodeEnv = targetDotEnv.NODE_ENV
+      if (ObjectType.isEmpty(targetStage)) {
+        const exampleEnvFile = path.join(__dirname, "../templates/environments/.env-example")
+        fs.copyFileSync(exampleEnvFile, targetEnvFile)
+      } else {
+        fs.writeFileSync(targetEnvFile, `NODE_ENV="${targetStage}"\n`, "utf8")
+      }
+      nodeEnv = targetStage || patchEnvs(targetEnvFile)?.NODE_ENV
     }
 
     if (!nodeEnv) {
       // throw new Error("Target environment is not set")
-      console.error("Target environment is not set")
+      console.error("❌ Target environment is not set")
       return
     }
 
@@ -179,64 +154,75 @@ export class ValidateEnvironment {
   // NOTE: Checks if the .env.dt.{environment} file exists. If not and doForce is true, it creates one.
   // Uses checkTargetEnvironment to determine the environment.  Called by validateEnvironment.
   private checkDtEnvFile(
-    TARGET_DIR: string,
-    targetEnvironment: string | undefined = undefined,
+    targetStage: string | undefined = undefined,
     doForce: boolean = false,
   ): boolean {
     // Determine the target environment.
     const nodeEnv: string | undefined =
-      targetEnvironment || this.checkTargetEnvironment(TARGET_DIR, targetEnvironment, doForce)
+      targetStage || this.checkTargetEnvironment(targetStage, doForce)
 
     if (!nodeEnv) {
       return false
     }
 
-    const targetDtEnvFile = path.join(TARGET_DIR, `.env.dt.${nodeEnv}`)
-    if (!fs.existsSync(targetDtEnvFile)) {
-      if (doForce) {
-        const exampleDtEnvFile = path.join(
-          __dirname,
-          "../templates/environments/.env.dt.stage-example",
-        )
-        // Copy the example .env.dt.stage file.
-        fs.copyFileSync(exampleDtEnvFile, targetDtEnvFile)
-      } else {
-        // throw new Error(`.env.dt.${nodeEnv} file not found`)
-        console.warn(`WARN: .env.dt.${nodeEnv} file not found. Use force -f option to create one.`)
+    const targetDtEnvFile = Configuration.dtEnvFile
+    try {
+      const dtEnvConfig = Configuration.dtEnvConfig
+      return !ObjectType.isEmpty(dtEnvConfig)
+    } catch (error) {
+      if (!doForce) {
+        // console.error(`Error reading .env.dt.${nodeEnv} file: ${(error as Error).message}`)
         return false
       }
-    }
 
-    return true
+      const exampleDtEnvFile = path.join(
+        __dirname,
+        "../templates/environments/.env.dt.stage-example",
+      )
+      // Copy the example .env.dt.stage file.
+      fs.copyFileSync(exampleDtEnvFile, targetDtEnvFile)
+      return true
+    }
   }
 
   // NOTE: Validates AWS credentials from the .env.dt.{environment} file. Called by validateEnvironment.
   private validateAwsCredentials(
-    TARGET_DIR: string,
-    targetEnvironment: string | undefined = undefined,
+    targetStage: string | undefined = undefined,
+    doForce: boolean = false,
   ): boolean {
     // Determine the target environment.
     const nodeEnv: string | undefined =
-      targetEnvironment || this.checkTargetEnvironment(TARGET_DIR, targetEnvironment, false)
+      targetStage || this.checkTargetEnvironment(targetStage, false)
 
     if (!nodeEnv) {
       return false
     }
 
-    const targetDtEnvFile = path.join(TARGET_DIR, `.env.dt.${nodeEnv}`)
-    const targetDotEnvDtExists = fs.existsSync(targetDtEnvFile)
-    if (!targetDotEnvDtExists) {
-      throw new Error(`Working directory doesn't have .env.dt.${nodeEnv} file`)
+    const targetDtEnvFile = Configuration.dtEnvFile
+
+    const exampleDtEnvFile = path.join(__dirname, "../templates/environments/.env.dt.stage-example")
+
+    let dtEnvConfig: Record<string, string>
+    try {
+      dtEnvConfig = Configuration.dtEnvConfig
+
+      if (ObjectType.isEmpty(dtEnvConfig)) {
+        fs.copyFileSync(exampleDtEnvFile, targetDtEnvFile)
+        console.warn(`❗️ WARN: Update configuration within .env.dt.${nodeEnv} file.`)
+        return false
+      }
+    } catch (error) {
+      if (!doForce) {
+        // console.error(`Error reading .env.dt.${nodeEnv} file: ${(error as Error).message}`)
+        return false
+      }
     }
 
-    // Read and parse the .env.dt.{environment} file.
-    // const targetDotEnvDt = dotenv.parse(fs.readFileSync(targetDtEnvFile, "utf-8"))
-    const targetDotEnvDt = patchEnvs(targetDtEnvFile)
     // Check if AWS credentials are set.
     if (
-      ObjectType.isEmpty(targetDotEnvDt.AWS_REGION) ||
-      ObjectType.isEmpty(targetDotEnvDt.AWS_ACCESS_KEY) ||
-      ObjectType.isEmpty(targetDotEnvDt.AWS_SECRET_KEY)
+      ObjectType.isEmpty(dtEnvConfig.AWS_REGION) ||
+      ObjectType.isEmpty(dtEnvConfig.AWS_ACCESS_KEY) ||
+      ObjectType.isEmpty(dtEnvConfig.AWS_SECRET_KEY)
     ) {
       // throw new Error("AWS credentials are not set in the environment")
       console.error("AWS credentials are not set in the environment")
@@ -247,38 +233,32 @@ export class ValidateEnvironment {
   }
 
   // NOTE: Validates required environment variables from the .env.dt.{environment} file. Called by validateEnvironment.
-  private validateRequiredVariables(
-    TARGET_DIR: string,
-    targetEnvironment: string | undefined = undefined,
-  ): boolean {
+  private validateRequiredVariables(targetStage: string | undefined = undefined): {
+    valid: boolean
+    invalid: string[]
+  } {
     // Determine the target environment.
     const nodeEnv: string | undefined =
-      targetEnvironment || this.checkTargetEnvironment(TARGET_DIR, targetEnvironment, false)
-
-    if (!nodeEnv) {
-      return false
-    }
-
-    const dtEnvFile = path.join(TARGET_DIR, `.env.dt.${nodeEnv}`)
-
-    // Load environment variables from .env.dt.{stage} file
-    const envConfig = patchEnvs(dtEnvFile)
+      targetStage || this.checkTargetEnvironment(targetStage, false)
 
     // Define required variables and their validation rules
     const requiredVars = {
-      DEPLOYMENT_TYPE: (value: string) => ["single", "asg"].includes(value),
+      // NODE_ENV: (value: string) => (value.length > 0 && ["staging","production"].includes(value)),
       PROJECT_NAME: (value: string) => value.length > 0,
+
+      DEPLOYMENT_TYPE: (value: string) => ["single", "asg"].includes(value),
 
       AWS_PROFILE: (value: string) => value.length > 0,
       AWS_REGION: (value: string) => /^[a-z]{2}-[a-z]+-\d$/.test(value),
       AWS_ACCOUNT_ID: (value: string) => /^[0-9]{12}$/.test(value),
       AWS_ACCESS_KEY: (value: string) => /^[A-Z0-9]{20}$/.test(value),
       AWS_SECRET_KEY: (value: string) => value.length >= 40,
-      
+
       VPC_ID: (value: string) => /^vpc-[a-f0-9]{17}$/.test(value),
       IGW_ID: (value: string) => /^igw-[a-f0-9]{17}$/.test(value),
-      
-      SSL_CERTIFICATE_ARN: (value: string) => /^arn:aws:acm:[a-z]{2}-[a-z]+-\d+:\d+:certificate\/[a-z0-9-]+$/.test(value),
+
+      SSL_CERTIFICATE_ARN: (value: string) =>
+        /^arn:aws:acm:[a-z]{2}-[a-z]+-\d+:\d+:certificate\/[a-z0-9-]+$/.test(value),
       AMI_ID: (value: string) => /^ami-[a-f0-9]{17}$/.test(value),
       INSTANCE_TYPES: (value: string) => {
         try {
@@ -295,11 +275,11 @@ export class ValidateEnvironment {
 
       // ECR_REGISTRY: (value: string) => /^[0-9]{12}.dkr.ecr.[a-z]{2}-[a-z]+-\d+.amazonaws.com$/.test(value),
       // ECR_REPOSITORY_NAME: (value: string) => value.length > 0,
-      
+
       // CODEDEPLOY_APP_NAME: (value: string) => value.length > 0,
       // CODEDEPLOY_GROUP_NAME: (value: string) => value.length > 0,
       // CODEDEPLOY_S3_BUCKET: (value: string) => value.length > 0,
-      
+
       BITBUCKET_USERNAME: (value: string) => value.length > 0,
       BITBUCKET_APP_PASSWORD: (value: string) => value.length > 0,
       BITBUCKET_WORKSPACE: (value: string) => value.length > 0,
@@ -309,10 +289,26 @@ export class ValidateEnvironment {
     const missingVars: string[] = []
     const invalidVars: string[] = []
 
+    if (!nodeEnv) {
+      return { valid: false, invalid: ["NODE_ENV"].concat(Object.keys(requiredVars)) }
+    }
+
+    // Load environment variables from .env.dt.{stage} file
+    let envConfig: Record<string, string>
+    let dtEnvConfig: Record<string, string>
+    try {
+      envConfig = Configuration.envConfig
+      const __dtEnvConfig = Configuration.dtEnvConfig
+      dtEnvConfig = { ...envConfig, ...__dtEnvConfig }
+    } catch (error) {
+      // console.error(`Error reading .env.dt.${nodeEnv} file: ${(error as Error).message}`)
+      return { valid: false, invalid: Object.keys(requiredVars) }
+    }
+
     Object.entries(requiredVars).forEach(([varName, validationFn]) => {
-      if (!(varName in envConfig)) {
+      if (!(varName in dtEnvConfig)) {
         missingVars.push(varName)
-      } else if (!validationFn(envConfig[varName])) {
+      } else if (!validationFn(dtEnvConfig[varName])) {
         invalidVars.push(varName)
       }
     })
@@ -336,14 +332,14 @@ export class ValidateEnvironment {
     }
 
     // Additional validation for deployment-specific variables
-    if (envConfig.DEPLOYMENT_TYPE === "asg") {
+    if (dtEnvConfig.DEPLOYMENT_TYPE === "asg") {
       const asgVars = [
         "SSL_CERTIFICATE_ARN",
         "ASG_DESIRED_CAPACITY",
         "ASG_MIN_SIZE",
         "ASG_MAX_SIZE",
       ]
-      const missingAsgVars = asgVars.filter((varName) => !(varName in envConfig))
+      const missingAsgVars = asgVars.filter((varName) => !(varName in dtEnvConfig))
       if (missingAsgVars.length > 0) {
         // throw new Error(`Missing required ASG environment variables: ${missingAsgVars.join(", ")}`)
         console.error(`Missing required ASG environment variables: ${missingAsgVars.join(", ")}`)
@@ -351,7 +347,9 @@ export class ValidateEnvironment {
       }
     }
 
-    return Object.values(checkPoint).some((value) => value === false) ? false : true
+    return Object.values(checkPoint).some((value) => value === false)
+      ? { valid: false, invalid: [].concat(missingVars, invalidVars) }
+      : { valid: true, invalid: [] }
 
     // return true
   }
@@ -376,10 +374,10 @@ export class ValidateEnvironment {
         // version may contain alphanumeric characters, hyphens, periods, underscores, and max 4 segments
         // const reExtractVersion = /\d+\.\d+\.\d+/gi
         const reExtractVersion = /\d+\.\d+\.\d+(?:-\w+)?/gi
-        
+
         const extractVersion = reExtractVersion.exec(toolVersion.stdout.trim().replace("\n", ""))
         const extractedVersion = (extractVersion?.[0] as string).replace(" ", "")
-        
+
         // const isVersionSatisfied: boolean = !compare(
         //   extractVersion?.[0] as string,
         //   version.version,
