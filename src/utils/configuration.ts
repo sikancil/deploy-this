@@ -58,6 +58,18 @@ export class Configuration {
     "EXPOSE_SSH",
   ]
 
+  // TODO: Hardcoded Variables for Bitbucket
+  static readonly gitopsAllowedVariables = [
+    "NODE_ENV",
+    "PROJECT_NAME",
+    "DEPLOYMENT_TYPE",
+    "AWS_PROFILE",
+    "AWS_REGION",
+    "AWS_ACCESS_KEY",
+    "AWS_SECRET_KEY",
+    "AWS_ACCOUNT_ID",
+  ]
+
   static readonly projectRoot: string = process.cwd()
   static get envFile(): string {
     return path.join(this.projectRoot, ".env")
@@ -72,10 +84,7 @@ export class Configuration {
   }
 
   static get dtEnvFile(): string {
-    return path.join(
-      this.projectRoot,
-      `.env.dt.${this.envConfig.NODE_ENV}`,
-    )
+    return path.join(this.projectRoot, `.env.dt.${this.envConfig.NODE_ENV}`)
   }
 
   static get dtEnvConfig(): Record<string, string> {

@@ -6,7 +6,9 @@ import { ObjectType } from "./object"
 function loadEnvs(dotEnfFilePath: string): { [key: string]: string } {
   const fileExists = fs.existsSync(dotEnfFilePath)
   if (!fileExists) {
-    throw new Error(`dotEnv file not found at ${dotEnfFilePath}`)
+    const error = new Error(`dotEnv file not found at ${dotEnfFilePath}`)
+    error.name = "ENOENT"
+    throw error
   }
 
   const { error, parsed } = dotenv.config({ path: dotEnfFilePath, override: true })
@@ -20,15 +22,25 @@ export function patchEnvs(
   dotEnfFilePath: string,
   patches?: NodeJS.ProcessEnv,
 ): { [key: string]: string } {
-  let keyValues = loadEnvs(dotEnfFilePath)
-  Object.keys(keyValues).forEach((env) => {
-    // replace env values contains ${VARIABLES} with the real value
-    // e.g. ${HOME} => /home/username
-    keyValues[env] = keyValues[env].replace(/\${(.*?)}/g, (_match, p1) => {
-      return process.env[p1] || keyValues[env]
+  try {
+    let keyValues = loadEnvs(dotEnfFilePath)
+    Object.keys(keyValues).forEach((env) => {
+      // replace env values contains ${VARIABLES} with the real value
+      // e.g. ${HOME} => /home/username
+      keyValues[env] = keyValues[env].replace(/\${(.*?)}/g, (_match, p1) => {
+        return process.env[p1] || keyValues[env]
+      })
     })
-  })
-  keyValues = ObjectType.applyIf(ObjectType.apply(process.env, keyValues), patches || {})
+    keyValues = ObjectType.applyIf(ObjectType.apply(process.env, keyValues), patches || {})
 
-  return keyValues
+    return keyValues
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error(`❌ patchEnvs Exception: ${(error as Error).message}\n`)
+      return {}
+    } else {
+      console.error(`❌ patchEnvs Unknown error: ${error}\n`)
+      return {}
+    }
+  }
 }

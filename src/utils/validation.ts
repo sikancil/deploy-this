@@ -151,9 +151,7 @@ export class Validation {
       (key) => !requiredEnvVars.concat(requiredDtEnvVars).includes(key),
     )
     optionalVars
-      .filter((varName) =>
-        Configuration.optionalVariables.includes(varName),
-      )
+      .filter((varName) => Configuration.optionalVariables.includes(varName))
       .forEach((varName) => {
         console.info(
           `${envs[varName] ? `💧` : `🩸`} ${varName}`.padEnd(40, " ") + `: ${envs[varName]}`,

@@ -8,7 +8,7 @@ export function handleError(message: string = "Unknown error.", error: unknown):
 
   if (error instanceof Error) {
     console.error(`Details: ${error.message}`)
-    if (error.stack) {
+    if (error.stack && process.env.DEBUG === "1") {
       console.error(`Stack trace: ${error.stack}`)
     }
   } else if (typeof error === "string") {
