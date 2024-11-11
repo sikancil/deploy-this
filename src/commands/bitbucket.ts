@@ -5,7 +5,9 @@ import { Configuration } from "../utils/configuration"
 import { ObjectType } from "../utils/object"
 
 // Create subcommands for variables management
-const bitbucketCommands = new Command("variables").description("Manage Bitbucket Pipeline variables")
+const bitbucketCommands = new Command("variables").description(
+  "Manage Bitbucket Pipeline variables",
+)
 
 // List variables command
 bitbucketCommands
@@ -74,8 +76,11 @@ bitbucketCommands
     try {
       const service = createBitbucketService()
 
+      const envConfig = Configuration.envConfig
+      const dtEnvConfig = Configuration.dtEnvConfig
+
       // Convert ProcessEnv to Record<string, string> by filtering out undefined values
-      const envVars: Record<string, string> = Object.entries(process.env)
+      const envVars: Record<string, string> = Object.entries({ ...envConfig, ...dtEnvConfig })
         .filter(([, value]) => value !== undefined)
         .reduce(
           (acc, [key, value]) => ({
@@ -86,7 +91,7 @@ bitbucketCommands
         )
 
       console.log("\nInitializing Bitbucket Pipeline variables...")
-      await service.initializeFromEnvironment(envVars)
+      await service.initializeFromEnvironment(envVars, envConfig.NODE_ENV)
       console.log("Variables initialized successfully!\n")
     } catch (error) {
       handleError("Failed to initialize variables", error)

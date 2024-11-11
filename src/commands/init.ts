@@ -17,7 +17,7 @@ export async function run(
   // Validate the target environment or use a default if not provided
   const validateEnvironment = new ValidateEnvironment(projectRoot)
   targetEnvironment =
-    targetEnvironment || (await validateEnvironment.validates(projectRoot, targetEnvironment, force))
+    targetEnvironment || (await validateEnvironment.validates(targetEnvironment, force))
 
   console.info(`🌥️ Target environment: ${targetEnvironment}\n`)
 

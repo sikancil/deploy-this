@@ -7,6 +7,7 @@
 
 import path from "node:path"
 import { patchEnvs } from "../utils/env"
+import { undefinedText } from "../interfaces/common"
 
 export async function run(): Promise<void> {
   const TARGET_DIR = process.cwd()
@@ -19,28 +20,23 @@ export async function run(): Promise<void> {
   console.info(`
 Current Configuration:
 ----------------------
-${envConfig.NODE_ENV                  ? "🔹" : "🔸"} Environment            : ${envConfig.NODE_ENV}  
-${dtEnvConfig.DEPLOYMENT_TYPE         ? "🔹" : "🔸"} Deployment Type        : ${dtEnvConfig.DEPLOYMENT_TYPE}
+${envConfig.NODE_ENV                  ? "🔹" : "🔸"} Stage Environment      : ${envConfig.NODE_ENV || undefinedText}
+${envConfig.PROJECT_NAME              ? "🔹" : "🔸"} Project Name           : ${envConfig.PROJECT_NAME || undefinedText}
+${dtEnvConfig.DEPLOYMENT_TYPE         ? "🔹" : "🔸"} Deployment Type        : ${dtEnvConfig.DEPLOYMENT_TYPE || undefinedText}
 
-${dtEnvConfig.AWS_PROFILE             ? "🔹" : "🔸"} AWS Profile            : ${dtEnvConfig.AWS_PROFILE}
-${dtEnvConfig.AWS_REGION              ? "🔹" : "🔸"} AWS Region             : ${dtEnvConfig.AWS_REGION}
-${dtEnvConfig.AWS_ACCOUNT_ID          ? "🔹" : "🔸"} AWS Account            : ${dtEnvConfig.AWS_ACCOUNT_ID}
+${dtEnvConfig.AWS_PROFILE             ? "🔹" : "🔸"} AWS Profile            : ${dtEnvConfig.AWS_PROFILE || undefinedText}
+${dtEnvConfig.AWS_REGION              ? "🔹" : "🔸"} AWS Region             : ${dtEnvConfig.AWS_REGION || undefinedText}
+${dtEnvConfig.AWS_ACCOUNT_ID          ? "🔹" : "🔸"} AWS Account            : ${dtEnvConfig.AWS_ACCOUNT_ID || undefinedText}
 
-${dtEnvConfig.AWS_ACCESS_KEY          ? "🔹" : "🔸"} AWS Access Key         : ${dtEnvConfig.AWS_ACCESS_KEY}
-${dtEnvConfig.AWS_SECRET_KEY          ? "🔹" : "🔸"} AWS Secret Key         : ${dtEnvConfig.AWS_SECRET_KEY}
+${dtEnvConfig.AWS_ACCESS_KEY          ? "🔹" : "🔸"} AWS Access Key         : ${dtEnvConfig.AWS_ACCESS_KEY || undefinedText}
+${dtEnvConfig.AWS_SECRET_KEY          ? "🔹" : "🔸"} AWS Secret Key         : ${dtEnvConfig.AWS_SECRET_KEY || undefinedText}
 
-${dtEnvConfig.VPC_ID                  ? "🔹" : "🔸"} VPC ID                 : ${dtEnvConfig.VPC_ID}
-${dtEnvConfig.IGW_ID                  ? "🔹" : "🔸"} Internet Gateway ID    : ${dtEnvConfig.IGW_ID}
+${dtEnvConfig.VPC_ID                  ? "🔹" : "🔸"} VPC ID                 : ${dtEnvConfig.VPC_ID || undefinedText}
+${dtEnvConfig.IGW_ID                  ? "🔹" : "🔸"} Internet Gateway ID    : ${dtEnvConfig.IGW_ID || undefinedText}
 
-${dtEnvConfig.ECR_REGISTRY            ? "🔹" : "🔸"} ECR Registry           : ${dtEnvConfig.ECR_REGISTRY}
-${dtEnvConfig.ECR_REPOSITORY_NAME     ? "🔹" : "🔸"} ECR Repository Name    : ${dtEnvConfig.ECR_REPOSITORY_NAME}
-
-${dtEnvConfig.CODEDEPLOY_APP_NAME     ? "🔹" : "🔸"} CodeDeploy App Name    : ${dtEnvConfig.CODEDEPLOY_APP_NAME}
-${dtEnvConfig.CODEDEPLOY_GROUP_NAME   ? "🔹" : "🔸"} CodeDeploy Group Name  : ${dtEnvConfig.CODEDEPLOY_GROUP_NAME}
-${dtEnvConfig.CODEDEPLOY_S3_BUCKET    ? "🔹" : "🔸"} CodeDeploy S3 Bucket   : ${dtEnvConfig.CODEDEPLOY_S3_BUCKET}
-
-${dtEnvConfig.BITBUCKET_APP_PASSWORD  ? "🔹" : "🔸"} Bitbucket Credentials  : ${dtEnvConfig.BITBUCKET_APP_PASSWORD}
-${dtEnvConfig.BITBUCKET_WORKSPACE     ? "🔹" : "🔸"} Bitbucket Workspace    : ${dtEnvConfig.BITBUCKET_WORKSPACE}
-${dtEnvConfig.BITBUCKET_BRANCH        ? "🔹" : "🔸"} Bitbucket Branch       : ${dtEnvConfig.BITBUCKET_BRANCH}
+${dtEnvConfig.BITBUCKET_USERNAME      ? "🔹" : "🔸"} Bitbucket Username     : ${dtEnvConfig.BITBUCKET_USERNAME || undefinedText}
+${dtEnvConfig.BITBUCKET_APP_PASSWORD  ? "🔹" : "🔸"} Bitbucket Credentials  : ${dtEnvConfig.BITBUCKET_APP_PASSWORD || undefinedText}
+${dtEnvConfig.BITBUCKET_WORKSPACE     ? "🔹" : "🔸"} Bitbucket Workspace    : ${dtEnvConfig.BITBUCKET_WORKSPACE || undefinedText}
+${dtEnvConfig.BITBUCKET_BRANCH        ? "🔹" : "🔸"} Bitbucket Branch       : ${dtEnvConfig.BITBUCKET_BRANCH || undefinedText}
 `)
 }

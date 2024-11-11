@@ -4,7 +4,11 @@ import { ValidateEnvironment } from "../services/validate"
 import { handleError } from "../utils/error.handler"
 import { DestroyType } from "../interfaces/common"
 
-export async function run(targetEnvironment?: string, destroyType?: string, force: boolean = false): Promise<void> {
+export async function run(
+  targetEnvironment?: string,
+  destroyType?: string,
+  force: boolean = false,
+): Promise<void> {
   try {
     // Get the current working directory, which is assumed to be the root of the project.
     const projectRoot = process.cwd()
@@ -12,8 +16,7 @@ export async function run(targetEnvironment?: string, destroyType?: string, forc
     // Validate the target environment or use a default if not provided
     const validateEnvironment = new ValidateEnvironment(projectRoot)
     targetEnvironment =
-      targetEnvironment ||
-      (await validateEnvironment.validates(projectRoot, targetEnvironment, false))
+      targetEnvironment || (await validateEnvironment.validates(targetEnvironment, false))
 
     console.info(`🌥️ Target environment: ${targetEnvironment}\n`)
 
@@ -69,25 +72,25 @@ export async function run(targetEnvironment?: string, destroyType?: string, forc
         case "EnvironmentValidationError":
           handleError(
             "Environment validation failed. Please check your .env and .env.dt files.",
-            error
+            error,
           )
           break
         case "TerraformInitError":
           handleError(
             "Terraform initialization failed. Please check your Terraform configuration.",
-            error
+            error,
           )
           break
         case "TerraformDestroyError":
           handleError(
             "Terraform destroy failed. Please review the error message and your Terraform configuration.",
-            error
+            error,
           )
           break
         case "AWSCredentialsError":
           handleError(
             "AWS credentials are invalid or not set. Please check your AWS configuration.",
-            error
+            error,
           )
           break
         default:

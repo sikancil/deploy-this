@@ -10,6 +10,9 @@ export async function run(): Promise<void> {
     // Run the validation process using the ValidateEnvironment service.
     await VE.run()
   } catch (error) {
-    handleError("Environment validation failed. Please check required files and it's contents.", error)
+    handleError(
+      "Environment validation failed. Please check required files and it's contents.",
+      error,
+    )
   }
 }
