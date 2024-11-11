@@ -1,3 +1,5 @@
+export const undefinedText = "Not set⁉️"
+
 export enum DeploymentType {
   SINGLE = "single",
   ASG = "asg",
