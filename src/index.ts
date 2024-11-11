@@ -123,7 +123,7 @@ program
   })
 
 // Add Bitbucket pipelines command
-cmdBitbucket(program)
+program.command("pipelines").description("Manage Bitbucket Pipelines").addCommand(cmdBitbucket)
 
 // Define the 'help' command for displaying help information
 // NOTE: This command displays help information about the CLI program.
