@@ -136,15 +136,18 @@ export class Init {
         const templateContent = fs.readFileSync(path.join(templateDir, file), "utf8")
 
         fs.writeFileSync(path.join(terraformDir, file), templateContent)
-        console.log(`${file} created in ${terraformDir}`)
+        // console.log(`${file} created in ${terraformDir}`)
       }
     }
 
     const deploymentTypeFile = deploymentType === "asg" ? "ASG.md" : "SINGLE.md"
     if (!fs.existsSync(path.join(terraformDir, deploymentTypeFile))) {
       fs.writeFileSync(path.join(terraformDir, deploymentTypeFile), "")
-      console.log(`${deploymentTypeFile} created in ${terraformDir}`)
+      // console.log(`${deploymentTypeFile} created in ${terraformDir}`)
     }
+
+    console.log()
+    console.info(`✅ Deployment ${deploymentType} template applied.`)
   }
 
   private renderTemplate(template: string, variables: Record<string, string>): string {
