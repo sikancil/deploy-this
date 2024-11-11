@@ -29,8 +29,7 @@ export class Init {
   // NOTE: This method orchestrates the initialization process. It calls createTerraformDirectories to handle the creation of Terraform directories.
   async run(): Promise<void> {
     await this.createTerraformDirectories(this.targetEnvironment, this.deploymentType, this.force)
-    console.log()
-
+    
     console.info("👍 Initialization completed successfully 🙌.\n")
 
     console.info(`👉 Next steps:`)
@@ -146,8 +145,8 @@ export class Init {
       // console.log(`${deploymentTypeFile} created in ${terraformDir}`)
     }
 
-    console.log()
     console.info(`✅ Deployment ${deploymentType} template applied.`)
+    console.log()
   }
 
   private renderTemplate(template: string, variables: Record<string, string>): string {
