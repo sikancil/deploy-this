@@ -59,25 +59,35 @@ export class Configuration {
   ]
 
   static readonly projectRoot: string = process.cwd()
-  static readonly envFile: string = path.join(this.projectRoot, ".env")
+  static get envFile(): string {
+    return path.join(this.projectRoot, ".env")
+  }
 
   static get envConfig(): Record<string, string> {
+    if (!fs.existsSync(this.envFile)) {
+      // return {}
+      throw new Error(`.env file not found within ${this.projectRoot}`)
+    }
     return dotenv.parse(fs.readFileSync(this.envFile))
   }
 
-  static readonly dtEnvFile: string = path.join(
-    this.projectRoot,
-    `.env.dt.${this.envConfig.NODE_ENV}`,
-  )
+  static get dtEnvFile(): string {
+    return path.join(
+      this.projectRoot,
+      `.env.dt.${this.envConfig.NODE_ENV}`,
+    )
+  }
+
+  static get dtEnvConfig(): Record<string, string> {
+    if (!fs.existsSync(this.dtEnvFile)) {
+      // return {}
+      throw new Error(`.env.dt${this.envConfig.NODE_ENV} file not found within ${this.projectRoot}`)
+    }
+    return dotenv.parse(fs.readFileSync(this.dtEnvFile))
+  }
 
   static getConfig() {
-    const envFile = path.join(this.projectRoot, ".env")
-    const envConfig = dotenv.parse(fs.readFileSync(envFile))
-
-    const dtEnvFile = path.join(this.projectRoot, `.env.dt.${envConfig.NODE_ENV}`)
-    const dtEnvConfig = dotenv.parse(fs.readFileSync(dtEnvFile))
-
-    return { ...envConfig, ...dtEnvConfig }
+    return { ...this.envConfig, ...this.dtEnvConfig }
   }
 
   static getTerraformDir(targetEnvironment: string): string {
