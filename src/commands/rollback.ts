@@ -39,7 +39,7 @@ export async function run(
       console.error(
         `❌ Invalid Terraform state file or not found or has empty resources.\n`,
         `  Please ensure it exists or valid before rolling back!\n`,
-      )  
+      )
       process.exit(1)
     }
 

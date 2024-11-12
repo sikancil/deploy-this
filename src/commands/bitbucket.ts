@@ -31,13 +31,15 @@ bitbucketCommands
           for (const [stage, variables] of Object.entries(displayVariables?.["deployments"])) {
             console.info(`Stage: ${stage}`)
 
-            const stageVariables = (variables as BitbucketVariable[])?.map((variable: any) => {
-              return {
-                key: variable.key,
-                value: variable.secured ? "********" : variable.value,
-                secured: variable.secured,
-              }
-            })
+            const stageVariables = (variables as BitbucketVariable[])?.map(
+              (variable: BitbucketVariable) => {
+                return {
+                  key: variable.key,
+                  value: variable.secured ? "********" : variable.value,
+                  secured: variable.secured,
+                }
+              },
+            )
             console.table(stageVariables)
           }
         } else {
@@ -47,13 +49,15 @@ bitbucketCommands
 
         if (!ObjectType.isEmpty(displayVariables?.["repository"])) {
           console.info("Repository Variables:")
-          const displayRepository = displayVariables?.["repository"]?.map((variable: any) => {
-            return {
-              key: variable.key,
-              value: variable.secured ? "********" : variable.value,
-              secured: variable.secured,
-            }
-          })
+          const displayRepository = (displayVariables?.["repository"] as BitbucketVariable[])?.map(
+            (variable: BitbucketVariable) => {
+              return {
+                key: variable.key,
+                value: variable.secured ? "********" : variable.value,
+                secured: variable.secured,
+              }
+            },
+          )
           console.table(displayRepository)
           console.log()
         } else {
