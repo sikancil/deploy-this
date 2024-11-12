@@ -80,7 +80,7 @@ export class Configuration {
       // return {}
       throw new Error(`.env file not found within ${this.projectRoot}`)
     }
-    return patchEnvs(this.envFile) 
+    return patchEnvs(this.envFile)
   }
 
   static get dtEnvFile(): string {
