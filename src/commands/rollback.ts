@@ -1,7 +1,8 @@
-import prompts from "prompts"
 import { Rollback } from "../services/rollback"
 import { ValidateEnvironment } from "../services/validate"
 import { handleError } from "../utils/error.handler"
+import { ShellPrompts } from "./../utils/shell.prompts"
+import { Validation } from "./../utils/validation"
 import { DestroyType } from "../interfaces/common"
 
 export async function run(
@@ -28,37 +29,24 @@ export async function run(
         process.exit(1)
       }
 
-      const response = await prompts({
-        type: "text",
-        name: "targetEnvironment",
-        message: "Enter target environment (staging or production):",
-        validate: (value) =>
-          ["staging", "production"].includes(value)
-            ? true
-            : "Please enter either 'staging' or 'production'",
-      })
-      targetEnvironment = response.targetEnvironment
+      targetEnvironment = await ShellPrompts.promptForTargetEnvironment(targetEnvironment)
+    }
+
+    // Check if Terraform state file exists
+    // NOTE: This checks if the Terraform state file exists for the target environment, otherwise it exits with an error.
+    const validTfState = Validation.checkTfState(targetEnvironment)
+    if (!validTfState.tfStateExists || !validTfState.vpcExists || !validTfState.igwExists) {
+      console.error(
+        `❌ Invalid Terraform state file or not found or has empty resources.\n`,
+        `  Please ensure it exists or valid before rolling back!\n`,
+      )  
+      process.exit(1)
     }
 
     // If the deployment type is not provided, prompt the user to select one.
     // NOTE: This uses a select prompt to allow the user to choose between 'single' and 'asg' deployment types.  It also provides an 'exit' option to cancel the initialization.
     if (!destroyType) {
-      const response = await prompts({
-        type: "select",
-        name: "destroyType",
-        message: "Select destroy type:",
-        choices: [
-          { title: "Full Destroy (All Resources)", value: "full" },
-          { title: "Partial Destroy (Exclude VPC and IGW)", value: "partial" },
-          { title: "Exit", value: "exit" },
-        ],
-      })
-      // If the user selects 'exit', log a message and return, cancelling the initialization.
-      if (response.destroyType === "exit") {
-        console.log("Exiting...")
-        return
-      }
-      destroyType = response.destroyType
+      destroyType = await ShellPrompts.selectDestroyType()
     }
 
     console.info(`🚀 Starting rollback...`)
