@@ -248,7 +248,7 @@ export class Validation {
           const fileTfState = fs.readFileSync(path.join(terraformDir, stateFile as string), "utf8")
           const tfState = JSON.parse(fileTfState) as TFState
 
-          if (!ObjectType.isEmpty(tfState?.resources)) {
+          if (ObjectType.isEmpty(tfState?.resources)) {
             return { tfStateExists: undefined, vpcExists: undefined, igwExists: undefined }
           }
 
