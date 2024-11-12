@@ -13,19 +13,17 @@
     "build:templates": "npm run build:variables ; npm run build:terraforms",
     "chmod:bin": "chmod-cli ./dist/index.js -m 0o755",
     "build": "rimraf ./dist/ ; tsc",
-    "test": "jest --coverage=true --cache=false --runInBand=true --forceExit --detectOpenHandles",
-    "lint": "eslint 'src/**/*.ts'",
     "format": "prettier --write 'src/**/*.ts'",
-    "debug": "DEBUG=1 ts-node src/index.ts",
+    "lint": "eslint 'src/**/*.ts'",
+    "lint:fix": "eslint 'src/**/*.ts' --fix",
+    "precommit": "npm run format ; npm run lint",
     "dev": "./pre-exec.script.js ; ts-node src/index.ts",
+    "debug": "DEBUG=1 ts-node src/index.ts",
     "start": "node dist/index.js",
     "watch": "tsc -w",
-    "tf:init": "cd src/templates/terraforms ; terraform init",
-    "tf:plan": "cd src/templates/terraforms ; terraform plan",
-    "tf:apply": "cd src/templates/terraforms ; terraform apply",
-    "tf:destroy": "cd src/templates/terraforms ; terraform destroy",
-    "postbuild": "npm run chmod:bin ; npm run build:templates",
+    "test": "jest --coverage=true --cache=false --runInBand=true --forceExit --detectOpenHandles",
     "prepack": "npm run build",
+    "postbuild": "npm run chmod:bin ; npm run build:templates",
     "postinstall": "npm run build"
   },
   "keywords": [
@@ -73,6 +71,6 @@
     "lodash": "^4.17.21",
     "prompts": "^2.4.2",
     "rimraf": "^4.4.1",
-    "typescript": "^5.1.6"
+    "typescript": "5.3.2"
   }
 }
