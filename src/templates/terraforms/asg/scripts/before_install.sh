@@ -21,24 +21,31 @@ if ! systemctl is-active --quiet docker; then
     exit 1
 fi
 
-# Check AWS CLI installation
+# Check AWS CLI installation and configure
 if ! command -v aws &> /dev/null; then
     log "ERROR: AWS CLI is not installed"
     exit 1
 fi
 
-# Create application and scripts directories
+# Create application directories
 log "Creating application directories"
 mkdir -p /home/ubuntu/app/scripts
 chown -R ubuntu:ubuntu /home/ubuntu/app
 chmod 755 /home/ubuntu/app/scripts
 
-# Login to ECR
-log "Logging into ECR"
+# Configure AWS CLI and login to ECR
+log "Configuring AWS CLI and logging into ECR"
+aws configure set default.region ${AWS_REGION}
 aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
 
 if [ $? -ne 0 ]; then
     log "ERROR: Failed to login to ECR"
+    exit 1
+fi
+
+# Verify ECR access
+if ! aws ecr describe-repositories --repository-names ${ECR_REPOSITORY_NAME} &>/dev/null; then
+    log "ERROR: Cannot access ECR repository ${ECR_REPOSITORY_NAME}"
     exit 1
 fi
 

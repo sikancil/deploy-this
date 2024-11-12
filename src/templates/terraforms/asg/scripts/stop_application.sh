@@ -14,11 +14,21 @@ log "Starting stop_application script"
 CURRENT_CONTAINER=$(docker ps -q --filter "name=app-")
 
 if [ ! -z "$CURRENT_CONTAINER" ]; then
-    log "Stopping current container: $CURRENT_CONTAINER"
-    docker stop $CURRENT_CONTAINER || true
+    log "Gracefully stopping container: $CURRENT_CONTAINER"
+    # Send SIGTERM and wait up to 30 seconds
+    timeout 30 docker stop $CURRENT_CONTAINER || {
+        log "Container did not stop gracefully, forcing..."
+        docker kill $CURRENT_CONTAINER
+    }
     docker rm $CURRENT_CONTAINER || true
 else
     log "No running container found"
+fi
+
+# Verify no containers are running on port 3000
+if netstat -ln | grep -q ':3000 '; then
+    log "WARNING: Port 3000 is still in use"
+    # Don't fail deployment, but log for investigation
 fi
 
 # Clean up unused containers

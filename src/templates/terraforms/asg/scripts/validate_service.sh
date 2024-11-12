@@ -19,18 +19,38 @@ if [ -z "$NEW_CONTAINER_ID" ]; then
     exit 1
 fi
 
-# Check container health status
-CONTAINER_HEALTH=$(docker inspect --format='{{.State.Health.Status}}' $NEW_CONTAINER_ID)
+# Check container health status with timeout
+TIMEOUT=180
+START_TIME=$(date +%s)
 
-if [ "$CONTAINER_HEALTH" != "healthy" ]; then
-    log "ERROR: Container health check failed. Status: $CONTAINER_HEALTH"
-    docker logs $NEW_CONTAINER_ID
-    exit 1
-fi
+while true; do
+    CURRENT_TIME=$(date +%s)
+    ELAPSED_TIME=$((CURRENT_TIME - START_TIME))
+    
+    if [ $ELAPSED_TIME -gt $TIMEOUT ]; then
+        log "ERROR: Container health check timed out after ${TIMEOUT} seconds"
+        docker logs $NEW_CONTAINER_ID
+        exit 1
+    fi
+    
+    CONTAINER_HEALTH=$(docker inspect --format='{{.State.Health.Status}}' $NEW_CONTAINER_ID)
+    
+    if [ "$CONTAINER_HEALTH" = "healthy" ]; then
+        log "Container health check passed"
+        break
+    elif [ "$CONTAINER_HEALTH" = "unhealthy" ]; then
+        log "ERROR: Container health check failed. Status: unhealthy"
+        docker logs $NEW_CONTAINER_ID
+        exit 1
+    fi
+    
+    log "Waiting for container health check... (${ELAPSED_TIME}s elapsed)"
+    sleep 5
+done
 
 # Check if application responds to HTTP requests
-RETRY_COUNT=3
-RETRY_DELAY=5
+RETRY_COUNT=5
+RETRY_DELAY=10
 
 for i in $(seq 1 $RETRY_COUNT); do
     if curl -s http://localhost:3000/health | grep -q "OK"; then

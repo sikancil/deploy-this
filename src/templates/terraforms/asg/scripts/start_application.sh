@@ -17,8 +17,14 @@ FULL_IMAGE_NAME="${ECR_REGISTRY}/${ECR_REPOSITORY_NAME}:latest"
 log "Starting new container: ${NEW_CONTAINER_NAME}"
 docker run -d \
     --name ${NEW_CONTAINER_NAME} \
-    -p 3000:3000 \
+    --restart unless-stopped \
+    --network host \
     --env-file /home/ubuntu/.env.vm \
+    --health-cmd="curl -f http://localhost:3000/health || exit 1" \
+    --health-interval=30s \
+    --health-timeout=10s \
+    --health-retries=3 \
+    --health-start-period=30s \
     ${FULL_IMAGE_NAME}
 
 if [ $? -ne 0 ]; then
