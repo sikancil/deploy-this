@@ -118,7 +118,12 @@ export class Init {
 
     // Remove existing Terraform files
     fs.readdirSync(terraformDir).forEach((file) => {
-      if (file.endsWith(".tf") || file.endsWith(".sh") || file.endsWith(".md")) {
+      if (
+        file.endsWith(".tf") ||
+        file.endsWith(".yml") ||
+        file.endsWith(".sh") ||
+        file.endsWith(".md")
+      ) {
         fs.unlinkSync(path.join(terraformDir, file))
       }
     })
@@ -131,7 +136,12 @@ export class Init {
   ): Promise<void> {
     const files = fs.readdirSync(templateDir)
     for (const file of files) {
-      if (file.endsWith(".tf") || file.endsWith(".sh") || file.endsWith(".md")) {
+      if (
+        file.endsWith(".tf") ||
+        file.endsWith(".yml") ||
+        file.endsWith(".sh") ||
+        file.endsWith(".md")
+      ) {
         const templateContent = fs.readFileSync(path.join(templateDir, file), "utf8")
 
         fs.writeFileSync(path.join(terraformDir, file), templateContent)
@@ -139,11 +149,11 @@ export class Init {
       }
     }
 
-    const deploymentTypeFile = deploymentType === "asg" ? "ASG.md" : "SINGLE.md"
-    if (!fs.existsSync(path.join(terraformDir, deploymentTypeFile))) {
-      fs.writeFileSync(path.join(terraformDir, deploymentTypeFile), "")
-      // console.log(`${deploymentTypeFile} created in ${terraformDir}`)
-    }
+    // const deploymentTypeFile = deploymentType === "asg" ? "ASG.md" : "SINGLE.md"
+    // if (!fs.existsSync(path.join(terraformDir, deploymentTypeFile))) {
+    //   fs.writeFileSync(path.join(terraformDir, deploymentTypeFile), "")
+    //   // console.log(`${deploymentTypeFile} created in ${terraformDir}`)
+    // }
 
     console.info(`✅ Deployment ${deploymentType} template applied.`)
     console.log()
