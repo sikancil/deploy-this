@@ -121,27 +121,27 @@ export class Deploy {
 
         console.log(
           `Terraform States:\n` +
-            `- VPC: ${!vpcStateValid ? "❌" : "✅"} - ${vpcStateValid}\n` +
-            `- IGW: ${!igwStateValid ? "❌" : "✅"} - ${igwStateValid}\n`,
+            `- VPC: ${!vpcStateValid ? "❌ Invalid" : `✅ ${vpcStateValid}`}\n` +
+            `- IGW: ${!igwStateValid ? "❌ Invalid" : `✅ ${igwStateValid}`}\n`,
         )
         console.log(
           `Configured Values:\n` +
-            `- VPC: ${!vpcConfigValid ? "❌" : "✅"} - ${vpcConfigValid}\n` +
-            `- IGW: ${!igwConfigValid ? "❌" : "✅"} - ${igwConfigValid}\n`,
+            `- VPC: ${!vpcConfigValid ? "❌ Invalid" : `✅ ${vpcConfigValid}`}\n` +
+            `- IGW: ${!igwConfigValid ? "❌ Invalid" : `✅ ${igwConfigValid}`}\n`,
         )
 
         // When State is valid and Configured is valid, use State, fix Configured, do not import terraform resources
         // When State is valid and Configured is invalid, use State, fix Configured, do import terraform resources
         // When State is invalid and Configured is valid, use Configured, remove State, do import terraform resources
         // When State is invalid and Configured is invalid, use Configured, remove State, do not import terraform resources
-        if (vpcStateValid && igwStateValid) {
+        if (!ObjectType.isEmpty(vpcStateValid) && !ObjectType.isEmpty(igwStateValid)) {
           // Update values in .env.dt.{targetEnvironment}
           Configuration.updateEnvFile(this.targetEnvironment, {
-            VPC_ID: checkTfStateResult.vpcExists as string,
-            IGW_ID: checkTfStateResult.igwExists as string,
+            VPC_ID: checkTfStateResult.vpcExists,
+            IGW_ID: checkTfStateResult.igwExists,
           })
-          this.enVars.VPC_ID = checkTfStateResult.vpcExists as string
-          this.enVars.IGW_ID = checkTfStateResult.igwExists as string
+          this.enVars.VPC_ID = checkTfStateResult.vpcExists
+          this.enVars.IGW_ID = checkTfStateResult.igwExists
 
           if (vpcConfigValid && igwConfigValid) {
             console.warn(`❗️ Invalid Terraform state and found valid configuration variables.`)
@@ -221,15 +221,18 @@ export class Deploy {
 
       // TODO: when successful, read terraform tfstate and update .env.dt.${NODE_ENV} file, then return vpcId and igwId
       const succeededState = Validation.checkTfState(this.targetEnvironment)
-      const appliedVpcId = succeededState.vpcExists as string
-      const appliedIgwId = succeededState.igwExists as string
 
-      Configuration.updateEnvFile(this.targetEnvironment, {
-        VPC_ID: appliedVpcId,
-        IGW_ID: appliedIgwId,
-      })
+      if (
+        !ObjectType.isEmpty(succeededState?.vpcExists) &&
+        !ObjectType.isEmpty(succeededState?.igwExists)
+      ) {
+        Configuration.updateEnvFile(this.targetEnvironment, {
+          VPC_ID: succeededState?.vpcExists,
+          IGW_ID: succeededState?.igwExists,
+        })
+      }
 
-      return { vpcId: appliedVpcId, igwId: appliedIgwId }
+      return { vpcId: succeededState?.vpcExists, igwId: succeededState?.igwExists }
     } catch (error) {
       process.chdir(this.projectRoot)
       console.error("❗️ Error executing Terraform:", error)
