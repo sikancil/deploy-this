@@ -85,7 +85,7 @@ export class Validation {
       process.env.NODE_ENV = dotEnv.NODE_ENV
       NODE_ENV = dotEnv.NODE_ENV
     } else {
-      dotEnv["NODE_ENV"] = process.env.NODE_ENV as string
+      dotEnv = Configuration.envConfig
     }
 
     const dtEnvFile = path.join(this.projectRoot, `.env.dt.${NODE_ENV}`)
