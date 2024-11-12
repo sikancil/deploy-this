@@ -139,7 +139,7 @@ program
 // Parse the command-line arguments and execute the corresponding command
 program.parse(process.argv)
 
-// NOTE: If no command is provided, this will display the help information.
+// If no command is provided, display the help information
 if (!process.argv.slice(2).length) {
   program.outputHelp()
 }

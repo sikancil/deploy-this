@@ -163,8 +163,10 @@ export class Deploy {
               `terraform.tfstate.${Date.now()}.backup`,
             )
             
-            // fs.renameSync(tfStateFile, backupStateFile)
-            fs.copyFileSync(tfStateFile, backupStateFile)
+            if (fs.existsSync(tfStateFile)) {
+              // fs.renameSync(tfStateFile, backupStateFile)
+              fs.copyFileSync(tfStateFile, backupStateFile)
+            }
 
             // Import existing VPC and IGW
             this.runImport(`aws_vpc.VPC "${this.enVars.VPC_ID}"`)
