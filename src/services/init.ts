@@ -29,7 +29,7 @@ export class Init {
   // NOTE: This method orchestrates the initialization process. It calls createTerraformDirectories to handle the creation of Terraform directories.
   async run(): Promise<void> {
     await this.createTerraformDirectories(this.targetEnvironment, this.deploymentType, this.force)
-    
+
     console.info("👍 Initialization completed successfully 🙌.\n")
 
     console.info(`👉 Next steps:`)

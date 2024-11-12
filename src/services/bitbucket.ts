@@ -17,6 +17,7 @@ export interface BitbucketConfig {
 
 export interface BitbucketVariable {
   scope?: string
+  stage?: string
   name?: string
   type?: string
   uuid?: string
@@ -143,9 +144,9 @@ export class BitbucketService {
     }
   }
 
-  private async getDeploymentEnvironments(
+  private async getDeploymentVariables(
     stage?: UUID | string | undefined,
-  ): Promise<{ [key: string]: Environment[] }> {
+  ): Promise<{ [key: string]: BitbucketVariable[] }> {
     try {
       const stages: { name: string; slug: string; uuid: UUID }[] = []
       if (!stage) {
@@ -174,7 +175,7 @@ export class BitbucketService {
             scope: VariableScope.DEPLOYMENT,
             stage: stage || envStage.slug,
             name: envStage.name,
-            variables: response.data.values.filter(
+            variables: (response.data.values as BitbucketVariable[]).filter(
               (env: BitbucketVariable) => env.type === "pipeline_variable",
             ),
           }
@@ -184,12 +185,12 @@ export class BitbucketService {
       const finalResponse = Object.fromEntries(
         responses.map((response) => [
           response.stage,
-          response.variables.map((env: BitbucketVariable) => ({
+          response.variables.map((env) => ({
             scope: VariableScope.DEPLOYMENT,
             name: response.name,
             stage: response.stage,
             ...env,
-          })),
+          })) as BitbucketVariable[],
         ]),
       )
 
@@ -214,13 +215,13 @@ export class BitbucketService {
     }
   }
 
-  private async getRepositoryEnvironments(): Promise<Environment[]> {
+  private async getRepositoryVariables(): Promise<BitbucketVariable[]> {
     try {
       const response = await this.client.get(
         `/repositories/${this.config.workspace}/${this.config.repoSlug}/pipelines_config/variables`,
       )
 
-      return response.data.values.filter(
+      return (response.data.values as BitbucketVariable[]).filter(
         (env: BitbucketVariable) => env.type === "pipeline_variable",
       )
       // .map((env: BitbucketVariable) => env)
@@ -234,20 +235,27 @@ export class BitbucketService {
   async listVariables(options: {
     scope: VariableScope | undefined
     stage?: UUID | string | undefined
-  }): Promise<{ deployments?: { [key: string]: any }; repository?: { [key: string]: any } }> {
+  }): Promise<{
+    deployments?: { [key: string]: BitbucketVariable[] }
+    repository?: BitbucketVariable[]
+  }> {
     try {
       const deployments = !options.scope
-        ? await this.getDeploymentEnvironments(options.stage)
+        ? await this.getDeploymentVariables(options.stage)
         : options.scope === VariableScope.DEPLOYMENT
           ? !options.stage
-            ? await this.getDeploymentEnvironments(options.stage)
-            : (await this.getDeploymentEnvironments(options.stage))?.[options.stage]
+            ? await this.getDeploymentVariables(options.stage)
+            : {
+                [options.stage]: (await this.getDeploymentVariables(options.stage))?.[
+                  options.stage
+                ],
+              }
           : undefined
 
       const repository = !options.scope
-        ? await this.getRepositoryEnvironments()
+        ? await this.getRepositoryVariables()
         : options.scope === VariableScope.REPOSITORY
-          ? await this.getRepositoryEnvironments()
+          ? await this.getRepositoryVariables()
           : undefined
 
       const variables = {
@@ -299,9 +307,7 @@ export class BitbucketService {
         }
 
         // Upsert repository variables only
-        const existingVar = existingVariables?.repository?.find(
-          (v: any) => v?.key === variable?.key,
-        )
+        const existingVar = existingVariables?.repository?.find((v) => v?.key === variable?.key)
         payload.type = "pipeline_variable"
 
         if (existingVar) {
@@ -326,23 +332,16 @@ export class BitbucketService {
         }
 
         // Upsert deployment variables only
-        let existingVar: BitbucketVariable
-        if (!options.scope) {
-          existingVar = Object.keys(existingVariables?.deployments).reduce(
-            (_acc: any, _env: string) => {
-              const existingVarInDeployment: BitbucketVariable = existingVariables?.deployments?.[
-                _env
-              ]?.find((v: BitbucketVariable) => v?.key === variable?.key)
-              _acc = !existingVarInDeployment ? _acc : existingVarInDeployment
-              return _acc
-            },
-            undefined,
-          )
-        } else {
-          existingVar = existingVariables?.deployments?.find(
-            (v: BitbucketVariable) => v.key === variable?.key,
-          )
-        }
+        const existingVar: BitbucketVariable = Object.keys(
+          existingVariables?.deployments,
+        ).reduce<BitbucketVariable>((_acc, _env: string) => {
+          const existingVarInDeployment: BitbucketVariable = (
+            existingVariables?.deployments as { [key: string]: BitbucketVariable[] }
+          )?.[_env]?.find((v) => v?.key === variable?.key)
+          _acc = !existingVarInDeployment ? _acc : existingVarInDeployment
+          return _acc
+        }, undefined)
+
         payload.type = "pipeline_variable"
 
         if (existingVar) {
@@ -393,23 +392,18 @@ export class BitbucketService {
         baseUrl = `/repositories/${this.config.workspace}/${this.config.repoSlug}/deployments_config/environments/${encodeURIComponent(options.stage)}/variables`
       }
 
-      let existingVarInDeployments: BitbucketVariable
-      if (!options.scope) {
-        existingVarInDeployments = Object.keys(existingVariables?.deployments || {}).reduce(
-          (_acc: any, _env: string) => {
-            const existingVarInDeployment: BitbucketVariable = existingVariables?.deployments?.[
-              _env
-            ]?.find((v: BitbucketVariable) => v?.key === key)
-            _acc = !existingVarInDeployment ? _acc : existingVarInDeployment
-            return _acc
-          },
-          undefined,
-        )
-      } else {
-        existingVarInDeployments = Object.values(existingVariables?.deployments || {}).find(
-          (v: BitbucketVariable) => v?.key === key,
-        )
-      }
+      // Check if variable exists in deployments
+      const existingVarInDeployments: BitbucketVariable = Object.keys(
+        existingVariables?.deployments || {},
+      ).reduce<BitbucketVariable>((_acc, _env: string) => {
+        const existingVarInDeployment: BitbucketVariable = (
+          existingVariables?.deployments as { [key: string]: BitbucketVariable[] }
+        )?.[_env]?.find((v) => v?.key === key)
+        _acc = !existingVarInDeployment ? _acc : existingVarInDeployment
+        return _acc
+      }, undefined)
+
+      // Check if variable exists in repository
       const existingVarInRespository: BitbucketVariable = existingVariables?.repository?.find(
         (v: BitbucketVariable) => v?.key === key,
       )
@@ -468,18 +462,20 @@ export class BitbucketService {
           continue
         }
 
-        // existingVarInDeployments .staging .key
+        // Check if variable exists in deployments
         const existingVarInDeployments: BitbucketVariable = Object.keys(
           existingVariables?.deployments || {},
-        ).reduce((_acc: any, _env: string) => {
-          const existingVarInDeployment: BitbucketVariable = existingVariables?.deployments?.[
-            _env
-          ]?.find((v: BitbucketVariable) => v?.key === key)
+        ).reduce<BitbucketVariable>((_acc, _env: string) => {
+          const existingVarInDeployment: BitbucketVariable = (
+            existingVariables?.deployments as { [key: string]: BitbucketVariable[] }
+          )?.[_env]?.find((v) => v?.key === key)
           _acc = !existingVarInDeployment ? _acc : existingVarInDeployment
           return _acc
         }, undefined)
+
+        // Check if variable exists in repository
         const existingVarInRepository: BitbucketVariable = existingVariables?.repository?.find(
-          (v: BitbucketVariable) => v?.key === key,
+          (v) => v?.key === key,
         )
 
         // Determine if variable should be secured based on key naming

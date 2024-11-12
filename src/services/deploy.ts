@@ -162,7 +162,7 @@ export class Deploy {
               terraformDir,
               `terraform.tfstate.${Date.now()}.backup`,
             )
-            
+
             if (fs.existsSync(tfStateFile)) {
               // fs.renameSync(tfStateFile, backupStateFile)
               fs.copyFileSync(tfStateFile, backupStateFile)
