@@ -162,7 +162,9 @@ export class Deploy {
               terraformDir,
               `terraform.tfstate.${Date.now()}.backup`,
             )
-            fs.renameSync(tfStateFile, backupStateFile)
+            
+            // fs.renameSync(tfStateFile, backupStateFile)
+            fs.copyFileSync(tfStateFile, backupStateFile)
 
             // Import existing VPC and IGW
             this.runImport(`aws_vpc.VPC "${this.enVars.VPC_ID}"`)
