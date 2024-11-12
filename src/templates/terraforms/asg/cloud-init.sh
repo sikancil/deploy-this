@@ -3,6 +3,9 @@
 # Log file
 LOG_FILE="/opt/cloud-init.vm.log"
 
+# Standard User (non-root)
+$STD_USER="ubuntu"
+
 # Function to log messages
 log() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a $LOG_FILE
@@ -47,6 +50,9 @@ EOF
 
 # Restart Docker to apply changes
 systemctl restart docker
+
+# Add user to docker group
+usermod -aG docker $STD_USER
 
 # Install AWS CLI v2
 log "Installing AWS CLI v2"
