@@ -101,6 +101,7 @@ EOF
 log "Exporting variables"
 cat << EOF > /home/ubuntu/.env.vm
 NODE_ENV=${node_env}
+APP_PORT=${app_port}
 DEPLOYMENT_TYPE=${deployment_type}
 PROJECT_NAME=${project_name}
 

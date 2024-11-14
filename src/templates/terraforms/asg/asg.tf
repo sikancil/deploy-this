@@ -41,6 +41,7 @@ resource "aws_launch_template" "app" {
     "${path.module}/cloud-init.sh",
     {
       node_env               = var.node_env
+      app_port               = var.app_port
       deployment_type        = var.deployment_type
       project_name           = var.project_name
       aws_profile            = var.aws_profile
@@ -200,7 +201,6 @@ resource "aws_autoscaling_lifecycle_hook" "termination_hook" {
   lifecycle_transition    = "autoscaling:EC2_INSTANCE_TERMINATING"
   default_result         = "CONTINUE"
   heartbeat_timeout      = 60
-  default_result        = "CONTINUE"
   notification_metadata = jsonencode({
     command = "/usr/local/bin/graceful-shutdown"
   })

@@ -55,14 +55,14 @@ resource "aws_lb_target_group" "app" {
 
   health_check {
     enabled             = true
-    path                = "/health"
     port                = var.app_port
     protocol            = "HTTP"
-    healthy_threshold   = 2
-    unhealthy_threshold = 3
-    timeout             = 5
-    interval            = 30
-    matcher             = "200"
+    path                = var.health_check_path
+    healthy_threshold   = var.asg_health_check_healthy_threshold
+    unhealthy_threshold = var.asg_health_check_unhealthy_threshold
+    timeout             = var.asg_health_check_timeout
+    interval            = var.asg_health_check_interval
+    matcher             = var.asg_health_check_matcher
   }
 
   tags = merge(
