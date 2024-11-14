@@ -1,7 +1,11 @@
 #!/bin/bash
 
 # Log file
-LOG_FILE="/opt/codedeploy-agent/deployment-root/deployment-logs/codedeploy-agent-deployments.log"
+# Log file
+ISO_DATE=$(date -u +"%Y-%m-%d")
+LOG_PATH="/opt/codedeploy-logs/${ISO_DATE}/"
+mkdir -p $LOG_PATH
+LOG_FILE="${LOG_PATH}deployments.log"
 
 # Function to log messages
 log() {

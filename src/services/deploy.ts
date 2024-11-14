@@ -80,8 +80,8 @@ export class Deploy {
 
       let vpcStateValid: string | undefined = undefined
       let igwStateValid: string | undefined = undefined
-      let vpcConfigValid: string | undefined= undefined
-      let igwConfigValid: string | undefined= undefined
+      let vpcConfigValid: string | undefined = undefined
+      let igwConfigValid: string | undefined = undefined
 
       try {
         // When Terraform state file does not exists, import existing resources..
@@ -92,7 +92,7 @@ export class Deploy {
         }
 
         // Imports existing VPC if it's not already managed by Terraform state.
-        if (ObjectType.isEmpty(checkTfStateResult.vpcExists)) {
+        if (!ObjectType.isEmpty(checkTfStateResult.vpcExists)) {
           const vpcResource = await Validation.checkAwsVpc(ec2Client, [
             checkTfStateResult.vpcExists as string,
           ])
@@ -101,7 +101,7 @@ export class Deploy {
         }
 
         // Imports existing IGW if it's not already managed by Terraform state.
-        if (ObjectType.isEmpty(checkTfStateResult.igwExists)) {
+        if (!ObjectType.isEmpty(checkTfStateResult.igwExists)) {
           const igwResource = await Validation.checkAwsIgw(ec2Client, [
             checkTfStateResult.igwExists as string,
           ])
@@ -130,19 +130,19 @@ export class Deploy {
             `- IGW: ${!igwConfigValid ? "❌ Invalid" : `✅ ${igwConfigValid}`}\n`,
         )
 
-        // When State is valid and Configured is valid, use State, fix Configured, do not import terraform resources
-        // When State is valid and Configured is invalid, use State, fix Configured, do import terraform resources
-        // When State is invalid and Configured is valid, use Configured, remove State, do import terraform resources
-        // When State is invalid and Configured is invalid, use Configured, remove State, do not import terraform resources
         if (!ObjectType.isEmpty(vpcStateValid) && !ObjectType.isEmpty(igwStateValid)) {
-          if (vpcConfigValid && igwConfigValid) {
-            console.warn(`❗️ Invalid Terraform state and found valid configuration variables (A).`)
-            console.warn(`👉 Now will trying to import resources from configured variables...`)
-
-            // Import existing VPC and IGW
-            this.runImport(`aws_vpc.VPC "${this.enVars.VPC_ID}"`)
-            this.runImport(`aws_internet_gateway.InternetGateway "${this.enVars.IGW_ID}"`)
+          if (!ObjectType.isEmpty(vpcConfigValid) && !ObjectType.isEmpty(igwConfigValid)) {
+            if (vpcConfigValid === vpcStateValid && igwConfigValid === igwStateValid) {
+              console.info(`✅ Both Terraform state and configured variables are valid.`)
+            } else {
+              console.warn(`❗️ Both Terraform state and configured variables are valid.`)
+              console.warn(
+                `👉 Now will proceed with Terraform state instead of configured variables.`,
+              )
+            }
           } else {
+            console.log(`✅ Proceeding with Terraform state and updates to environment variables.`)
+
             // Update values in .env.dt.{targetEnvironment}
             Configuration.updateEnvFile(this.targetEnvironment, {
               VPC_ID: checkTfStateResult.vpcExists,
@@ -153,7 +153,7 @@ export class Deploy {
           }
         } else {
           if (vpcConfigValid && igwConfigValid) {
-            console.warn(`❗️ Invalid Terraform state and found valid configuration variables (B).`)
+            console.warn(`❗️ Invalid Terraform state and found valid configuration variables.`)
             console.warn(`👉 Now will trying to import resources from configured variables...`)
 
             // Rename to backup Terraform state file
@@ -164,7 +164,6 @@ export class Deploy {
             )
 
             if (fs.existsSync(tfStateFile)) {
-              // fs.renameSync(tfStateFile, backupStateFile)
               fs.copyFileSync(tfStateFile, backupStateFile)
             }
 

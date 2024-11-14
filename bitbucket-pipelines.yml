@@ -1,0 +1,241 @@
+definitions:
+  steps:
+    - step: &build-app
+        name: Install Dependencies and Build App
+        image: node:20.11.1
+        caches:
+          - node
+        script:
+          - echo "Installing dependencies and building app..."
+          - npm i --no-audit --omit=optional
+          - npm run format ; npm run lint
+          - npm run build
+          - echo "Verifying..."
+          - pwd  # Debug: Print current working directory
+          - ls -lah . # Debug: List contents of dist directory
+        artifacts:
+          - .terraforms/${NODE_ENV}/**
+          - dist/**
+          - node_modules/**
+          - package*.json
+          - Dockerfile
+          - .dockerignore
+          - docker-compose.yml
+
+pipelines:
+  default:
+    - step: *build-app
+  
+  branches:
+    master:
+      - step: *build-app
+      - step:
+          name: Build Image then Push to ECR then Trigger CodeDeploy
+          deployment: Staging
+          services:
+            - docker
+          script:
+            # - pipe: atlassian/aws-ecr-push-image:2.4.2
+            #   variables:
+            #     AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY
+            #     AWS_SECRET_ACCESS_KEY: $AWS_SECRET_KEY
+            #     AWS_DEFAULT_REGION: $AWS_REGION
+            #     IMAGE_NAME: $IMAGE_NAME
+            #     IMAGE_TAG: $IMAGE_TAG
+            #     TAGS: latest
+
+            # Install required packages
+            - echo "Installing required packages..."
+            - apt-get update -y && apt-get install -y zip unzip
+
+            # Install AWS CLI if not already installed
+            - echo "Installing AWS CLI..."
+            # - curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+            # - unzip -q awscliv2.zip
+            # - ./aws/install
+            - if ! command -v aws &> /dev/null; then curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && unzip -q awscliv2.zip && ./aws/install; fi
+
+            # Configure AWS credentials
+            - echo "Configuring AWS credentials..."
+            - export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY}"
+            - export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_KEY}"
+            - export AWS_DEFAULT_REGION="${AWS_REGION}"
+
+            - aws configure set aws_access_key_id "${AWS_ACCESS_KEY_ID}" --profile ${AWS_PROFILE}
+            - aws configure set aws_secret_access_key "${AWS_SECRET_ACCESS_KEY}" --profile ${AWS_PROFILE}
+            - aws configure set default.region "${AWS_REGION}" --profile ${AWS_PROFILE}
+
+            # Verify AWS credentials
+            - echo "Verifying AWS credentials..."
+            - aws sts get-caller-identity --profile ${AWS_PROFILE}
+            
+            # Login to ECR
+            - echo "Logging in to ECR..."
+            - aws ecr get-login-password --region ${AWS_REGION} --profile ${AWS_PROFILE} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+            
+            # Set up image variables
+            - export IMAGE_NAME="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}"
+            - export IMAGE_TAG=${BITBUCKET_COMMIT:0:7}
+            
+            # Create ECR repository if it doesn't exist
+            - echo "Verifying ECR repository..."
+            - aws ecr describe-repositories --repository-names ${PROJECT_NAME} --profile ${AWS_PROFILE} || aws ecr create-repository --repository-name ${PROJECT_NAME} --profile ${AWS_PROFILE}
+            
+            # Build and tag Docker image
+            - echo "Building and tagging Docker image..."
+            - docker build --no-cache -t ${IMAGE_NAME}:${IMAGE_TAG} .
+            - docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:latest
+            
+            # Push images to ECR
+            - echo "Pushing Docker images to ECR..."
+            - docker push ${IMAGE_NAME}:${IMAGE_TAG}
+            - docker push ${IMAGE_NAME}:latest
+
+            # Trigger CodeDeploy application
+            - |
+              echo "Triggering CodeDeploy application..."
+              if ! aws deploy get-application --application-name "${PROJECT_NAME}-cd" --profile ${AWS_PROFILE}; then
+                echo "Creating CodeDeploy application ${PROJECT_NAME}-cd"
+                aws deploy create-application --application-name "${PROJECT_NAME}-cd" --profile ${AWS_PROFILE}
+              fi
+
+            # Prepare deployment package
+            - |
+              echo "Preparing deployment package..."
+              mkdir -p deploy
+              cp -r .terraforms/staging/scripts/* deploy/
+              cp .terraforms/staging/appspec.yml deploy/
+              
+              # Create environment file
+              echo "Creating environment file..."
+              cat > deploy/env.sh << EOF
+              export ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+              export ECR_REPOSITORY_NAME="${PROJECT_NAME}"
+              export DEPLOYMENT_GROUP_ID="${BITBUCKET_COMMIT}"
+              export AWS_REGION="${AWS_REGION}"
+              export NODE_ENV="staging"
+              EOF
+              
+              # Make scripts executable
+              echo "Making scripts executable..."
+              chmod +x deploy/*.sh
+              
+              # List files for debugging
+              echo "Contents of deploy directory:"
+              ls -la deploy/
+            
+            # Create deployment archive
+            - |
+              echo "Creating deployment archive..."
+              cd deploy && zip -r ../deploy.zip . && cd ..
+              
+              # Verify zip file was created
+              if [ ! -f deploy.zip ]; then
+                echo "Error: deploy.zip was not created"
+                exit 1
+              fi
+              
+              echo "Size of deploy.zip:"
+              ls -lh deploy.zip
+            
+            # Ensure S3 bucket exists
+            - |
+              echo "Ensuring S3 bucket exists..."
+              if ! aws s3api head-bucket --profile ${AWS_PROFILE} --bucket "${PROJECT_NAME}-artifacts" 2>/dev/null; then
+                aws s3api create-bucket \
+                  --profile ${AWS_PROFILE} \
+                  --bucket "${PROJECT_NAME}-artifacts" \
+                  --region ${AWS_REGION} \
+                  --create-bucket-configuration LocationConstraint=${AWS_REGION}
+              fi
+            
+            # Upload deployment package to S3
+            - echo "Uploading deployment package to S3..."
+            - aws s3 cp deploy.zip "s3://${PROJECT_NAME}-artifacts/${BITBUCKET_COMMIT}/deploy.zip" --profile ${AWS_PROFILE}
+            
+            # Create and monitor deployment
+            - |
+              # Create deployment
+              echo "Creating deployment..."
+              DEPLOYMENT_ID=$(aws deploy create-deployment \
+                --application-name "${PROJECT_NAME}-cd" \
+                --deployment-group-name "${PROJECT_NAME}-cd-dg" \
+                --s3-location bucket="${PROJECT_NAME}-artifacts",key="${BITBUCKET_COMMIT}/deploy.zip",bundleType=zip \
+                --deployment-config-name CodeDeployDefault.OneAtATime \
+                --description "Deploying commit ${BITBUCKET_COMMIT:0:7}" \
+                --output text \
+                --query 'deploymentId' \
+                --profile "${AWS_PROFILE}") || {
+                  echo "Failed to create deployment"
+                  exit 1
+                }
+              
+              echo "Deployment ID: ${DEPLOYMENT_ID}"
+              
+              # Create deployment group if it doesn't exist
+              echo "Checking deployment group..."
+              if ! aws deploy get-deployment-group \
+                --application-name "${PROJECT_NAME}-cd" \
+                --deployment-group-name "${PROJECT_NAME}-cd-dg" \
+                --profile "${AWS_PROFILE}" &>/dev/null; then
+                echo "Creating deployment group ${PROJECT_NAME}-cd-dg"
+                aws deploy create-deployment-group \
+                  --application-name "${PROJECT_NAME}-cd" \
+                  --deployment-group-name "${PROJECT_NAME}-cd-dg" \
+                  --service-role-arn "${AWS_CODEDEPLOY_SERVICE_ROLE}" \
+                  --deployment-style deploymentType=IN_PLACE,deploymentOption=WITH_TRAFFIC_CONTROL \
+                  --ec2-tag-set "Key=Environment,Value=staging" \
+                  --profile "${AWS_PROFILE}"
+              fi
+
+              # Monitor deployment status
+              echo "Monitoring deployment status..."
+              while true; do
+                STATUS=$(aws deploy get-deployment \
+                  --deployment-id "${DEPLOYMENT_ID}" \
+                  --profile "${AWS_PROFILE}" \
+                  --query 'deploymentInfo.status' \
+                  --output text)
+                
+                echo "Deployment status: ${STATUS}"
+                
+                case ${STATUS} in
+                  "Succeeded")
+                    echo "Deployment completed successfully"
+                    break
+                    ;;
+                  "Failed"|"Stopped"|"Error")
+                    echo "Deployment failed with status: ${STATUS}"
+                    aws deploy get-deployment --deployment-id ${DEPLOYMENT_ID} --profile ${AWS_PROFILE}
+                    exit 1
+                    ;;
+                  *)
+                    sleep 30
+                    ;;
+                esac
+              done
+            # Cleanup old ECR images
+            - |
+              # Get all image tags except the latest 3
+              echo "Cleaning up old ECR images..."
+              IMAGES_TO_DELETE=$(aws ecr describe-images \
+                --repository-name "${PROJECT_NAME}" \
+                --region "${AWS_REGION}" \
+                --profile "${AWS_PROFILE}" \
+                --query 'imageDetails[?type(imageTag)!=`null`]|sort_by(@, &imagePushedAt)[:-3].imageTag' \
+                --output text) || echo "No images found to delete"
+              
+              # Delete old images if any found
+              echo "Deleting old ECR images..."
+              if [ ! -z "$IMAGES_TO_DELETE" ]; then
+                for tag in $IMAGES_TO_DELETE; do
+                  aws ecr batch-delete-images \
+                    --repository-name "${PROJECT_NAME}" \
+                    --image-ids imageTag="$tag" \
+                    --region "${AWS_REGION}" \
+                    --profile "${AWS_PROFILE}"
+                  echo "Deleted image with tag: $tag"
+                done
+              else
+                echo "No images to delete"
+              fi
