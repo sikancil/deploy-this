@@ -199,7 +199,11 @@ resource "aws_autoscaling_lifecycle_hook" "termination_hook" {
   autoscaling_group_name  = aws_autoscaling_group.app.name
   lifecycle_transition    = "autoscaling:EC2_INSTANCE_TERMINATING"
   default_result         = "CONTINUE"
-  heartbeat_timeout      = 300
+  heartbeat_timeout      = 60
+  default_result        = "CONTINUE"
+  notification_metadata = jsonencode({
+    command = "/usr/local/bin/graceful-shutdown"
+  })
 }
 
 resource "aws_autoscaling_attachment" "asg_attachment_alb" {

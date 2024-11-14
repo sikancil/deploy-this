@@ -30,7 +30,7 @@ apt-get update && apt-get upgrade -y
 
 # Install required packages
 log "Installing required packages"
-apt-get install -y wget curl net-tools iproute2 jq unzip
+apt-get install -y wget curl net-tools iproute2 jq unzip lighttpd
 
 # Install Docker and Docker Compose plugin
 log "Installing Docker and Docker Compose plugin"
@@ -130,8 +130,65 @@ chown -R ubuntu:ubuntu /home/ubuntu
 chmod 600 /home/ubuntu/.env.vm
 chmod 600 /root/.aws/credentials
 
-# Login to ECR
+# Setup temporary health check endpoint
+log "Setting up temporary health check endpoint"
+cat << EOF > /var/www/html/health
+OK
+EOF
+
+# Start lighttpd on port 3000 temporarily
+log "Starting temporary health check server"
+sed -i 's/server.port.*=.*80/server.port = 3000/' /etc/lighttpd/lighttpd.conf
+systemctl start lighttpd
+
+# Login to ECR and check for container image
 log "Logging into ECR"
 aws ecr get-login-password --region ${aws_region} | docker login --username AWS --password-stdin ${aws_account_id}.dkr.ecr.${aws_region}.amazonaws.com
+
+# Function to stop lighttpd properly
+stop_lighttpd() {
+    log "Stopping lighttpd service..."
+    systemctl stop lighttpd
+    systemctl disable lighttpd
+    
+    # Ensure port 3000 is free
+    if netstat -ln | grep -q ':3000 '; then
+        log "Force killing any process on port 3000..."
+        fuser -k 3000/tcp || true
+    fi
+}
+
+# Check if container image exists
+LATEST_IMAGE="${aws_account_id}.dkr.ecr.${aws_region}.amazonaws.com/${project_name}:latest"
+log "Checking for container image: $LATEST_IMAGE"
+
+if docker pull $LATEST_IMAGE; then
+    log "Successfully pulled container image"
+    
+    # Stop temporary health check server
+    stop_lighttpd
+    
+    # Wait for port to be available
+    sleep 5
+    
+    # Run the actual application container
+    docker run -d \
+        --name app \
+        -p 3000:3000 \
+        --restart unless-stopped \
+        $LATEST_IMAGE
+else
+    log "No container image found, keeping temporary health check server running"
+fi
+
+# Setup graceful shutdown handler
+cat << EOF > /usr/local/bin/graceful-shutdown
+#!/bin/bash
+# Graceful shutdown script
+docker stop app -t 30 || true
+systemctl stop lighttpd || true
+EOF
+
+chmod +x /usr/local/bin/graceful-shutdown
 
 log "Cloud-init script completed"
