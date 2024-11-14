@@ -1,3 +1,4 @@
+import { Configuration } from './../utils/configuration';
 import * as fs from "node:fs"
 import * as path from "node:path"
 import { execSync } from "node:child_process"
@@ -80,8 +81,6 @@ export class Rollback {
 
       // Run destroy based on selected type
       await this.runDestroy(selectedDestroyType, this.force)
-
-      console.info("✅ Rollback completed successfully.")
     } catch (error) {
       handleError("Rollback failed", error)
       process.exit(1)
@@ -103,6 +102,8 @@ export class Rollback {
   ): Promise<void> {
     try {
       console.info(`Running ${destroyType} destroy...`)
+
+      let destroyResult: Buffer
 
       if (destroyType === "partial") {
         // Destroy resources in reverse dependency order
@@ -151,13 +152,32 @@ export class Rollback {
         console.info(`Destroying partially (excludes VPC and IGW)...`)
 
         // execSync(`terraform destroy ${targetParamsAtOnce} -auto-approve`, { stdio: "inherit" })
-        execSync(`terraform destroy ${targetParamsAtOnce}${force ? " -auto-approve" : ""}`, {
-          stdio: "inherit",
-        })
+        destroyResult = execSync(
+          `terraform destroy ${targetParamsAtOnce}${force ? " -auto-approve" : ""}`,
+          {
+            stdio: "inherit",
+          },
+        )
       } else {
         // Full destroy including VPC and IGW
         // execSync("terraform destroy -auto-approve", { stdio: "inherit" })
-        execSync(`terraform destroy${force ? " -auto-approve" : ""}`, { stdio: "inherit" })
+        destroyResult = execSync(`terraform destroy${force ? " -auto-approve" : ""}`, {
+          stdio: "inherit",
+        })
+      }
+
+      if (
+        destroyResult.toString().toLowerCase().includes("error") ||
+        destroyResult.toString().toLowerCase().includes("failed") ||
+        destroyResult.toString().toLowerCase().includes("invalid")
+      ) {
+        console.error(`❌ Terraform destroy failed:\n${destroyResult.toString()}\n`)
+      } else {
+        Configuration.updateEnvFile(this.targetEnvironment, {
+          VPC_ID: "vpc-00000000000000000",
+          IGW_ID: "igw-00000000000000000",
+        })
+        console.info(`✅ Terraform destroy completed successfully.\n`)
       }
     } catch (error) {
       throw new Error(`Terraform destroy failed: ${error}`)
