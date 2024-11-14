@@ -4,7 +4,7 @@
 LOG_FILE="/opt/cloud-init.vm.log"
 
 # Standard User (non-root)
-$STD_USER="ubuntu"
+STD_USER="ubuntu"
 
 # Function to log messages
 log() {
@@ -51,8 +51,21 @@ EOF
 # Restart Docker to apply changes
 systemctl restart docker
 
-# Add user to docker group
+# Add user to docker group and set proper permissions
+log "Adding user to docker group"
 usermod -aG docker $STD_USER
+chmod 666 /var/run/docker.sock
+newgrp docker
+
+# Ensure docker.sock has correct permissions on restart
+log "Ensuring docker.sock has correct permissions on restart"
+cat << EOF > /etc/systemd/system/docker.socket.d/override.conf
+[Socket]
+SocketMode=0666
+EOF
+
+log "Reloading systemd daemon"
+systemctl daemon-reload
 
 # Install AWS CLI v2
 log "Installing AWS CLI v2"
