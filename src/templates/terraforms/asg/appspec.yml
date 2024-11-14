@@ -2,7 +2,7 @@ version: 0.0
 os: linux
 files:
   - source: /
-    destination: /home/ubuntu/app
+    destination: /home/ubuntu
 permissions:
   - object: /home/ubuntu/app/scripts
     pattern: "*.sh"
@@ -10,23 +10,55 @@ permissions:
     type:
       - file
 hooks:
+  BeforeBlockTraffic:
+    - location: scripts/01_before_block_traffic.sh
+      timeout: 300
+      runas: ubuntu
+  BlockTraffic:
+    - location: scripts/02_block_traffic.sh
+      timeout: 300
+      runas: ubuntu
+  AfterBlockTraffic:
+    - location: scripts/03_after_block_traffic.sh
+      timeout: 300
+      runas: ubuntu
   ApplicationStop:
-    - location: scripts/stop_application.sh
+    - location: scripts/04_application_stop.sh
       timeout: 300
-      runas: root
+      runas: ubuntu
+  DownloadBundle:
+    - location: scripts/05_download_bundle.sh
+      timeout: 300
+      runas: ubuntu
   BeforeInstall:
-    - location: scripts/before_install.sh
+    - location: scripts/06_before_install.sh
       timeout: 300
-      runas: root
+      runas: ubuntu
+  Install:
+    - location: scripts/07_install.sh
+      timeout: 300
+      runas: ubuntu
   AfterInstall:
-    - location: scripts/after_install.sh
+    - location: scripts/08_after_install.sh
       timeout: 300
-      runas: root
-  ApplicationStart:
-    - location: scripts/start_application.sh
-      timeout: 300
-      runas: root
+      runas: ubuntu
   ValidateService:
-    - location: scripts/validate_service.sh
+    - location: scripts/09_validate_service.sh
       timeout: 300
-      runas: root
+      runas: ubuntu
+  ApplicationStart:
+    - location: scripts/10_application_start.sh
+      timeout: 300
+      runas: ubuntu
+  BeforeAllowTraffic:
+    - location: scripts/11_before_allow_traffic.sh
+      timeout: 300
+      runas: ubuntu
+  AllowTraffic:
+    - location: scripts/12_allow_traffic.sh
+      timeout: 300
+      runas: ubuntu
+  AfterAllowTraffic:
+    - location: scripts/13_after_allow_traffic.sh
+      timeout: 300
+      runas: ubuntu
