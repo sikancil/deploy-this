@@ -78,10 +78,10 @@ export class Deploy {
       // Get current VPC and IGW IDs from Terraform state
       const checkTfStateResult = Validation.checkTfState(this.targetEnvironment)
 
-      let vpcStateValid = undefined
-      let igwStateValid = undefined
-      let vpcConfigValid = undefined
-      let igwConfigValid = undefined
+      let vpcStateValid: string | undefined = undefined
+      let igwStateValid: string | undefined = undefined
+      let vpcConfigValid: string | undefined= undefined
+      let igwConfigValid: string | undefined= undefined
 
       try {
         // When Terraform state file does not exists, import existing resources..
@@ -135,25 +135,25 @@ export class Deploy {
         // When State is invalid and Configured is valid, use Configured, remove State, do import terraform resources
         // When State is invalid and Configured is invalid, use Configured, remove State, do not import terraform resources
         if (!ObjectType.isEmpty(vpcStateValid) && !ObjectType.isEmpty(igwStateValid)) {
-          // Update values in .env.dt.{targetEnvironment}
-          Configuration.updateEnvFile(this.targetEnvironment, {
-            VPC_ID: checkTfStateResult.vpcExists,
-            IGW_ID: checkTfStateResult.igwExists,
-          })
-          this.enVars.VPC_ID = checkTfStateResult.vpcExists
-          this.enVars.IGW_ID = checkTfStateResult.igwExists
-
           if (vpcConfigValid && igwConfigValid) {
-            console.warn(`❗️ Invalid Terraform state and found valid configuration variables.`)
+            console.warn(`❗️ Invalid Terraform state and found valid configuration variables (A).`)
             console.warn(`👉 Now will trying to import resources from configured variables...`)
 
             // Import existing VPC and IGW
             this.runImport(`aws_vpc.VPC "${this.enVars.VPC_ID}"`)
             this.runImport(`aws_internet_gateway.InternetGateway "${this.enVars.IGW_ID}"`)
+          } else {
+            // Update values in .env.dt.{targetEnvironment}
+            Configuration.updateEnvFile(this.targetEnvironment, {
+              VPC_ID: checkTfStateResult.vpcExists,
+              IGW_ID: checkTfStateResult.igwExists,
+            })
+            this.enVars.VPC_ID = checkTfStateResult.vpcExists
+            this.enVars.IGW_ID = checkTfStateResult.igwExists
           }
         } else {
           if (vpcConfigValid && igwConfigValid) {
-            console.warn(`❗️ Invalid Terraform state and found valid configuration variables.`)
+            console.warn(`❗️ Invalid Terraform state and found valid configuration variables (B).`)
             console.warn(`👉 Now will trying to import resources from configured variables...`)
 
             // Rename to backup Terraform state file
