@@ -27,4 +27,4 @@ if [ -z "$INSTANCE_ID" ]; then
 fi
 
 log "Instance ID: ${INSTANCE_ID}"
-log "Before_block_traffic completed successfully"
+log "Before_block_traffic completed successfully\n\n"

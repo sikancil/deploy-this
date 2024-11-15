@@ -67,3 +67,5 @@ done
 
 log "ERROR: Application health check failed after $RETRY_COUNT attempts"
 exit 1
+
+log "Validate_service script completed successfully\n\n"

@@ -79,4 +79,4 @@ if [ ! -z "${ECR_REGISTRY}" ] && [ ! -z "${ECR_REPOSITORY_NAME}" ]; then
     fi
 fi
 
-log "Stop application script completed successfully"
+log "Stop application script completed successfully\n\n"

@@ -100,3 +100,5 @@ while true; do
             ;;
     esac
 done
+
+log "Application_start script completed successfully\n\n"

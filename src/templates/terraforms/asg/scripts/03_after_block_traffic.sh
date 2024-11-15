@@ -13,3 +13,7 @@ log() {
 }
 
 log "Starting before_block_traffic script"
+
+# processing...
+
+log "Before_block_traffic completed successfully\n\n"

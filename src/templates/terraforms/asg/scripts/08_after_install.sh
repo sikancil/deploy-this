@@ -41,4 +41,4 @@ docker image prune -f
 log "Removing old images, keeping 3 most recent"
 docker images "${ECR_REGISTRY}/${ECR_REPOSITORY_NAME}" --format "{{.ID}}" | tail -n +4 | xargs -r docker rmi -f || true
 
-log "After_install script completed successfully"
+log "After_install script completed successfully\n\n"

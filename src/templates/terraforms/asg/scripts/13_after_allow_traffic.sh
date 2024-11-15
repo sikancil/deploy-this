@@ -13,3 +13,7 @@ log() {
 }
 
 log "Starting after_allow_traffic script"
+
+# processing...
+
+log "After_allow_traffic completed successfully\n\n"

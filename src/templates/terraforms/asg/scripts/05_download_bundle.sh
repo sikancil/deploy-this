@@ -13,3 +13,7 @@ log() {
 }
 
 log "Starting download_bundle script"
+
+# processing...
+
+log "Download_bundle script completed successfully\n\n"

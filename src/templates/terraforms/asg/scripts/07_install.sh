@@ -13,3 +13,7 @@ log() {
 }
 
 log "Starting install script"
+
+# processing...
+
+log "Install script completed successfully\n\n"

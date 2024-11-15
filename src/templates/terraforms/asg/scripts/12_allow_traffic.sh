@@ -71,4 +71,4 @@ while true; do
     sleep 10
 done
 
-log "Allow_traffic completed successfully"
+log "Allow_traffic completed successfully\n\n"

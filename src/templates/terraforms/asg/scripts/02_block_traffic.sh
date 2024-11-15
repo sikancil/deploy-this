@@ -36,4 +36,4 @@ else
     log "No target group ARN found, skipping deregistration"
 fi
 
-log "Block_traffic completed successfully"
+log "Block_traffic completed successfully\n\n"
