@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # Log file
-# Log file
 ISO_DATE=$(date -u +"%Y-%m-%d")
 LOG_PATH="/opt/codedeploy-logs/${ISO_DATE}/"
 mkdir -p $LOG_PATH
