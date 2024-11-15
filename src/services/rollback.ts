@@ -79,6 +79,9 @@ export class Rollback {
       // Initialize terraform
       this.runInit()
 
+      // Clean up S3 artifacts before destroy
+      await this.cleanupS3Artifacts()
+
       // Clean up ECR images before destroy
       await this.cleanupECRImages()
       
@@ -187,19 +190,66 @@ export class Rollback {
     }
   }
 
+  private async cleanupS3Artifacts(): Promise<void> {
+    try {
+      console.info("Cleaning up S3 artifacts...")
+
+      // Delete all objects in the S3 bucket
+      const deleteCommand = `aws s3 rm s3://${this.enVars.PROJECT_NAME}-artifacts --recursive`
+      execSync(deleteCommand, { stdio: "inherit" })
+
+      // Verify that the S3 bucket is empty
+      const verifyCommand = `aws s3 ls s3://${this.enVars.PROJECT_NAME}-artifacts`
+      const verifyResult = execSync(verifyCommand, { stdio: "inherit" })
+
+      if (verifyResult.toString().includes("NoSuchBucket")) {
+        console.info("✅ S3 artifacts cleanup completed")
+      } else {
+        console.error("❌ S3 artifacts cleanup failed")
+      }
+    } catch (error) {
+      console.warn("Warning: Failed to cleanup S3 artifacts:", error)
+      // Continue with destroy even if cleanup fails
+    }
+  }
+
   private async cleanupECRImages(): Promise<void> {
     try {
       console.info("Cleaning up ECR images...")
-      
-      // Delete all images in the ECR repository
-      const deleteCommand = `aws ecr batch-delete-image \
+
+      // Get all image IDs in the ECR repository using AWS CLI
+      const existingImageIds: string[] = []
+      const listImageCommand = `aws ecr list-images \
         --repository-name ${this.enVars.PROJECT_NAME} \
-        --image-ids "$(aws ecr list-images \
-        --repository-name ${this.enVars.PROJECT_NAME} \
-        --query 'imageIds[*]' --output json)"`
+        --query 'imageIds[*]'`
+      const listImageResult = execSync(listImageCommand, { stdio: "inherit" })
+      const imageIds = JSON.parse(listImageResult.toString())
+      for (const imageId of imageIds) {
+        existingImageIds.push(imageId)
+      }
       
-      execSync(deleteCommand, { stdio: "inherit" })
-      console.info("✅ ECR images cleanup completed")
+      // Delete all images in the ECR repository using AWS CLI
+      for await (const imageId of existingImageIds) {
+        console.info(`Deleting image ${imageId}...`)
+
+        const deleteCommand = `aws ecr batch-delete-image \
+          --repository-name ${this.enVars.PROJECT_NAME} \
+          --image-ids ${imageId}`
+
+        execSync(deleteCommand, { stdio: "inherit" })
+      }
+
+      // Verify that the ECR repository is empty
+      const verifyCommand = `aws ecr describe-repositories \
+        --repository-names ${this.enVars.PROJECT_NAME} \
+        --query 'repositories[*].repositoryUri'`
+
+      const verifyResult = execSync(verifyCommand, { stdio: "inherit" })
+      if (verifyResult.toString().includes("null")) {
+        console.info("✅ ECR images cleanup completed")
+      } else {
+        console.error("❌ ECR images cleanup failed")
+      }
     } catch (error) {
       console.warn("Warning: Failed to cleanup ECR images:", error)
       // Continue with destroy even if cleanup fails
