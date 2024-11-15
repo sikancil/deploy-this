@@ -72,6 +72,8 @@ export class Rollback {
       // Initialize terraform
       this.runInit()
 
+      this.backupTerraformState(this.terraformDir)
+
       // Clean up S3 artifacts before destroy
       const s3 = new S3({ region: this.enVars.AWS_REGION })
       const isBucketCleanedUp = await this.cleanupBucket(
@@ -100,6 +102,9 @@ export class Rollback {
       // Run destroy based on selected type
       await this.runDestroy(selectedDestroyType, this.force)
     } catch (error) {
+      // Restore Terraform state from backup
+      this.restoreTerraformState(this.terraformDir)
+
       handleError("Rollback failed", error)
       process.exit(1)
     }
@@ -128,7 +133,7 @@ export class Rollback {
         const resources = [
           // First layer - Load Balancer and Target Group resources
           "aws_lb_listener.http",
-          "aws_lb_listener.https", 
+          "aws_lb_listener.https",
           "aws_lb.app",
           "aws_lb_target_group.app",
           // Second layer - AutoScaling resources
@@ -180,7 +185,7 @@ export class Rollback {
           // Ninth layer - Key Pair resources
           "aws_key_pair.dt_keypair",
           "local_file.dt_rsa_private",
-          "tls_private_key.dt_private"
+          "tls_private_key.dt_private",
         ]
 
         // build a string of all the resources to destroy
@@ -208,26 +213,94 @@ export class Rollback {
       if (
         destroyResult?.toString()?.toLowerCase()?.includes("error") ||
         destroyResult?.toString()?.toLowerCase()?.includes("failed") ||
-        destroyResult?.toString()?.toLowerCase()?.includes("invalid")
+        destroyResult?.toString()?.toLowerCase()?.includes("invalid") ||
+        destroyResult?.toString()?.toLowerCase()?.includes("cancelled")
       ) {
-        console.error(`❌ Terraform destroy failed:\n${destroyResult?.toString()}\n`)
+        console.error(`❌ Destroy failed. ${destroyResult?.toString()}\n`)
       } else {
         Configuration.updateEnvFile(this.targetEnvironment, {
           VPC_ID: "vpc-00000000000000000",
           IGW_ID: "igw-00000000000000000",
         })
-        console.info(`✅ Terraform destroy completed successfully.\n`)
+        console.info(`✅ Destroy completed successfully.\n`)
       }
     } catch (error) {
+      // Restore Terraform state from backup
+      this.restoreTerraformState(this.terraformDir)
+
       if (
         (error as Error)?.message?.includes("request send failed") ||
         (error as Error)?.message?.includes("dial tcp: lookup") ||
-        (error as Error)?.message?.includes("amazonaws.com: no such host")
+        (error as Error)?.message?.includes("amazonaws.com: no such host") ||
+        (error as Error)?.message?.includes("Command failed: terraform destroy")
       ) {
-        console.error(`❌ Terraform destroy failed:\n${(error as Error)?.message}\n`)
+        console.error(`❌ Destroy failed. ${(error as Error)?.message}\n`)
       } else {
-        throw new Error(`Terraform destroy failed: ${error}`)
+        throw error
       }
+    }
+  }
+
+  backupTerraformState(terraformDir: string): void {
+    try {
+      const backupStateFile = path.join(
+        terraformDir,
+        `terraform.tfstate.${Math.floor(Date.now() / 1000)}.backup`,
+      )
+      const stateFile = path.join(terraformDir, "terraform.tfstate")
+
+      if (fs.existsSync(stateFile)) {
+        fs.copyFileSync(stateFile, backupStateFile)
+      }
+    } catch (error) {
+      console.error("❌ Error backing up Terraform state:", error)
+      process.exit(1)
+    }
+  }
+
+  restoreTerraformState(terraformDir: string): void {
+    try {
+      // get latest backup file with file name format: terraform.tfstate.timestamp.backup
+      const files = fs.readdirSync(terraformDir)
+      const backupFiles = files
+        ?.filter((file) => {
+          // NOTE: The backup file name format is terraform.tfstate.timestamp.backup
+          const reBackupFormat = /terraform.tfstate.(\d+).backup/
+          const match = reBackupFormat.exec(file)
+          return (
+            file?.startsWith?.("terraform.tfstate") && file?.endsWith?.(".backup") && match?.length > 1
+          )
+        })
+        ?.sort((a, b) => b?.localeCompare(a))
+      const latestBackupFile = backupFiles?.[0] || undefined
+
+      if (!latestBackupFile) {
+        console.error("❌ No backup files found in Terraform directory")
+        process.exit(1)
+      }
+
+      const backupStateFile = path.join(terraformDir, latestBackupFile)
+      const stateFile = path.join(terraformDir, "terraform.tfstate")
+
+      if (fs.existsSync(backupStateFile)) {
+        fs.createReadStream(backupStateFile)
+          .pipe(fs.createWriteStream(stateFile))
+          .on("finish", () => {
+            // Finally, delete the backup file
+            fs.unlinkSync(backupStateFile)
+            console.log("✅ Terraform state restored from backup file")
+          })
+          .on("error", (err) => {
+            console.error("❌ Error restoring Terraform state from backup file:", err)
+            process.exit(1)
+          })
+      } else {
+        console.error("❌ Backup file not found:", backupStateFile)
+        process.exit(1)
+      }
+    } catch (error) {
+      console.error("❌ Error restoring Terraform state:", error)
+      process.exit(1)
     }
   }
 
