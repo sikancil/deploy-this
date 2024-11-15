@@ -101,6 +101,8 @@ export class Rollback {
 
       // Run destroy based on selected type
       await this.runDestroy(selectedDestroyType, this.force)
+
+      this.removeBackupTerraformState(this.terraformDir)
     } catch (error) {
       // Restore Terraform state from backup
       this.restoreTerraformState(this.terraformDir)
@@ -254,6 +256,31 @@ export class Rollback {
       }
     } catch (error) {
       console.error("❌ Error backing up Terraform state:", error)
+      process.exit(1)
+    }
+  }
+
+  removeBackupTerraformState(terraformDir: string): void {
+    try {
+      // get latest backup file with file name format: terraform.tfstate.timestamp.backup
+      const files = fs.readdirSync(terraformDir)
+      const backupFiles = files
+        ?.filter((file) => {
+          // NOTE: The backup file name format is terraform.tfstate.timestamp.backup
+          const reBackupFormat = /terraform.tfstate.(\d+).backup/
+          const match = reBackupFormat.exec(file)
+          return (
+            file?.startsWith?.("terraform.tfstate") && file?.endsWith?.(".backup") && match?.length > 1
+          )
+        })
+        ?.sort((a, b) => b?.localeCompare(a))
+      const latestBackupFile = backupFiles?.[0] || undefined
+
+      if (latestBackupFile) {
+        fs.unlinkSync(path.join(terraformDir, latestBackupFile))
+      }
+    } catch (error) {
+      console.error("❌ Error removing backup Terraform state:", error)
       process.exit(1)
     }
   }
