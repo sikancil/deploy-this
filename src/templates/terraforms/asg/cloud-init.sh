@@ -4,7 +4,10 @@
 LOG_FILE="/opt/cloud-init.vm.log"
 
 # Standard User (non-root)
-STD_USER=${std_user:-"ubuntu"}
+STD_USER="ubuntu"
+if [ -n "$std_user" ]; then
+    STD_USER="$std_user"
+fi
 
 # Function to log messages
 log() {
@@ -77,7 +80,7 @@ rm -rf aws awscliv2.zip
 # Install CodeDeploy agent
 log "Installing CodeDeploy agent"
 apt-get install -y ruby-full
-cd /home/${STD_USER}
+cd /home/$STD_USER
 wget https://aws-codedeploy-${aws_region}.s3.amazonaws.com/latest/install
 chmod +x ./install
 ./install auto
@@ -99,7 +102,7 @@ EOF
 
 # Export variables
 log "Exporting variables"
-cat << EOF > /home/${STD_USER}/.env.vm
+cat << EOF > /home/$STD_USER/.env.vm
 NODE_ENV=${node_env}
 APP_PORT=${app_port}
 DEPLOYMENT_TYPE=${deployment_type}
@@ -124,11 +127,11 @@ BITBUCKET_BRANCH=${bitbucket_branch}
 EOF
 
 # Add environment variables to .bashrc for persistence
-echo "set -a; source /home/${STD_USER}/.env.vm; set +a" >> /home/${STD_USER}/.bashrc
+echo "set -a; source /home/$STD_USER/.env.vm; set +a" >> /home/$STD_USER/.bashrc
 
 # Set correct ownership and permissions
-chown -R ${STD_USER}:${STD_USER} /home/${STD_USER}
-chmod 600 /home/${STD_USER}/.env.vm
+chown -R $STD_USER:$STD_USER /home/$STD_USER
+chmod 600 /home/$STD_USER/.env.vm
 chmod 600 /root/.aws/credentials
 
 # Setup temporary health check endpoint
