@@ -77,7 +77,7 @@ rm -rf aws awscliv2.zip
 # Install CodeDeploy agent
 log "Installing CodeDeploy agent"
 apt-get install -y ruby-full
-cd /home/ubuntu
+cd /home/${STD_USER}
 wget https://aws-codedeploy-${aws_region}.s3.amazonaws.com/latest/install
 chmod +x ./install
 ./install auto
@@ -99,7 +99,7 @@ EOF
 
 # Export variables
 log "Exporting variables"
-cat << EOF > /home/ubuntu/.env.vm
+cat << EOF > /home/${STD_USER}/.env.vm
 NODE_ENV=${node_env}
 APP_PORT=${app_port}
 DEPLOYMENT_TYPE=${deployment_type}
@@ -124,11 +124,11 @@ BITBUCKET_BRANCH=${bitbucket_branch}
 EOF
 
 # Add environment variables to .bashrc for persistence
-echo "set -a; source /home/ubuntu/.env.vm; set +a" >> /home/ubuntu/.bashrc
+echo "set -a; source /home/${STD_USER}/.env.vm; set +a" >> /home/${STD_USER}/.bashrc
 
 # Set correct ownership and permissions
-chown -R ubuntu:ubuntu /home/ubuntu
-chmod 600 /home/ubuntu/.env.vm
+chown -R ${STD_USER}:${STD_USER} /home/${STD_USER}
+chmod 600 /home/${STD_USER}/.env.vm
 chmod 600 /root/.aws/credentials
 
 # Setup temporary health check endpoint
@@ -141,6 +141,37 @@ EOF
 log "Starting temporary health check server"
 sed -i 's/server.port.*=.*80/server.port = 3000/' /etc/lighttpd/lighttpd.conf
 systemctl start lighttpd
+
+# Function to download docker-compose.yml from S3 with retries
+download_docker_compose() {
+    local max_attempts=5
+    local attempt=1
+    local wait_time=10
+
+    while [ $attempt -le $max_attempts ]; do
+        log "Attempting to download docker-compose.yml from S3 (attempt $attempt/$max_attempts)"
+        if aws s3 cp s3://${project_name}-artifacts/config/docker-compose.yml /home/$STD_USER/app/docker-compose.yml; then
+            log "Successfully downloaded docker-compose.yml"
+            chown $STD_USER:$STD_USER /home/$STD_USER/app/docker-compose.yml
+            chmod 644 /home/$STD_USER/app/docker-compose.yml
+            return 0
+        else
+            log "Failed to download docker-compose.yml (attempt $attempt/$max_attempts)"
+            if [ $attempt -lt $max_attempts ]; then
+                log "Waiting $wait_time seconds before next attempt..."
+                sleep $wait_time
+                wait_time=$((wait_time * 2))
+            fi
+        fi
+        attempt=$((attempt + 1))
+    done
+    
+    log "ERROR: Failed to download docker-compose.yml after $max_attempts attempts"
+    return 1
+}
+
+# Download docker-compose.yml from S3
+download_docker_compose
 
 # Login to ECR and check for container image
 log "Logging into ECR"

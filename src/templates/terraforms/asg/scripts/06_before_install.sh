@@ -62,4 +62,14 @@ docker image prune -f
 log "Removing old images, keeping 3 most recent"
 docker images "${ECR_REGISTRY}/${ECR_REPOSITORY_NAME}" --format "{{.ID}}" | tail -n +4 | xargs -r docker rmi -f || true
 
+# Download latest docker-compose.yml from S3
+log "Downloading latest docker-compose.yml from S3"
+if ! aws s3 cp s3://${project_name}-artifacts/config/docker-compose.yml /home/ubuntu/app/docker-compose.yml; then
+    log "ERROR: Failed to download docker-compose.yml from S3"
+    exit 1
+fi
+
+chown ubuntu:ubuntu /home/ubuntu/app/docker-compose.yml
+chmod 644 /home/ubuntu/app/docker-compose.yml
+
 log "Before_install script completed successfully"
