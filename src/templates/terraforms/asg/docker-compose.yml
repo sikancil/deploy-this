@@ -1,0 +1,16 @@
+services:
+  app:
+    image: ${AWS_ACCOUNT_ID:-local}.dkr.ecr.${AWS_REGION:-local}.amazonaws.com/${PROJECT_NAME:-app}:${IMAGE_TAG:-latest}
+    container_name: ${PROJECT_NAME:-app}
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=$NODE_ENV
+      - PORT=$APP_PORT
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
