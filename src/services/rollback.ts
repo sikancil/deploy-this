@@ -79,6 +79,9 @@ export class Rollback {
       // Initialize terraform
       this.runInit()
 
+      // Clean up ECR images before destroy
+      await this.cleanupECRImages()
+      
       // Run destroy based on selected type
       await this.runDestroy(selectedDestroyType, this.force)
     } catch (error) {
@@ -181,6 +184,25 @@ export class Rollback {
       }
     } catch (error) {
       throw new Error(`Terraform destroy failed: ${error}`)
+    }
+  }
+
+  private async cleanupECRImages(): Promise<void> {
+    try {
+      console.info("Cleaning up ECR images...")
+      
+      // Delete all images in the ECR repository
+      const deleteCommand = `aws ecr batch-delete-image \
+        --repository-name ${this.enVars.PROJECT_NAME} \
+        --image-ids "$(aws ecr list-images \
+        --repository-name ${this.enVars.PROJECT_NAME} \
+        --query 'imageIds[*]' --output json)"`
+      
+      execSync(deleteCommand, { stdio: "inherit" })
+      console.info("✅ ECR images cleanup completed")
+    } catch (error) {
+      console.warn("Warning: Failed to cleanup ECR images:", error)
+      // Continue with destroy even if cleanup fails
     }
   }
 }
