@@ -85,6 +85,11 @@ resource "aws_iam_role_policy_attachment" "ec2_policy" {
   role       = aws_iam_role.ec2_role.name
 }
 
+resource "aws_iam_role_policy_attachment" "codedeploy_agent_policy" {
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole"
+  role       = aws_iam_role.ec2_role.name
+}
+
 # Add S3 access policy for EC2 instances
 resource "aws_iam_role_policy" "s3_access" {
   name = "${var.project_name}-s3-access"
@@ -103,6 +108,28 @@ resource "aws_iam_role_policy" "s3_access" {
           "${aws_s3_bucket.artifacts.arn}",
           "${aws_s3_bucket.artifacts.arn}/*"
         ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ecr:GetAuthorizationToken",
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:GetRepositoryPolicy",
+          "ecr:DescribeRepositories",
+          "ecr:ListImages",
+          "ecr:DescribeImages",
+          "ecr:BatchGetImage"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "codedeploy:*",
+          "codedeploy-commands:*"
+        ]
+        Resource = "*"
       }
     ]
   })

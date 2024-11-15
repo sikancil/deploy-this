@@ -6,16 +6,22 @@ resource "aws_codedeploy_app" "app" {
 resource "aws_codedeploy_deployment_group" "app_dg" {
   # app_name               = var.codedeploy_app_name
   app_name               = aws_codedeploy_app.app.name
-
-  
   
   # deployment_group_name  = var.codedeploy_group_name
   deployment_group_name  = "${var.project_name}-cd-dg"
   service_role_arn       = aws_iam_role.codedeploy_role.arn
   deployment_config_name = "CodeDeployDefault.OneAtATime"
 
+  ec2_tag_set {
+    ec2_tag_filter {
+      key   = "Name"
+      type  = "KEY_AND_VALUE"
+      value = "${var.project_name}-vm"
+    }
+  }
+
   deployment_style {
-    deployment_option = "WITH_TRAFFIC_CONTROL"
+    # deployment_option = "WITH_TRAFFIC_CONTROL"
     deployment_type   = "IN_PLACE"
   }
 

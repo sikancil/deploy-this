@@ -37,7 +37,11 @@ variable "aws_account_id" {
 variable "aws_region" {
   description = "The AWS region to deploy to"
   type        = string
-  default     = "us-east-2"
+  
+  validation {
+    condition     = can(regex("^[a-z]{2}-[a-z]+-[0-9]$", var.aws_region))
+    error_message = "AWS region must be valid (e.g., us-east-2, eu-west-1)."
+  }
 }
 
 variable "aws_access_key" {
@@ -134,6 +138,16 @@ variable "availability_zones" {
   description = "The availability zones to use"
   type        = list(string)
   default     = ["us-east-2a", "us-east-2b"]
+
+  validation {
+    condition     = length(var.availability_zones) >= 2
+    error_message = "At least two availability zones must be specified for high availability."
+  }
+
+  validation {
+    condition     = alltrue([for az in var.availability_zones : can(regex("^[a-z]{2}-[a-z]+-\\d[a-z]$", az))])
+    error_message = "Availability zones must be valid AWS availability zone names (e.g., us-east-2a)."
+  }
 }
 
 variable "bitbucket_username" {
