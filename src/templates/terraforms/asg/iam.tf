@@ -103,15 +103,6 @@ resource "aws_iam_role_policy" "s3_access" {
           "${aws_s3_bucket.artifacts.arn}",
           "${aws_s3_bucket.artifacts.arn}/*"
         ]
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "sns:Publish"
-        ]
-        Resource = [
-          aws_sns_topic.config_updates.arn
-        ]
       }
     ]
   })

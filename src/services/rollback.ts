@@ -85,7 +85,7 @@ export class Rollback {
         s3,
       )
 
-      if (isBucketCleanedUp) {
+      if (isBucketCleanedUp >= 0) {
         console.log("✅ S3 bucket cleanup completed")
       } else {
         console.error("❌ S3 bucket cleanup failed")
@@ -97,7 +97,7 @@ export class Rollback {
       // await this.cleanupECRImages()
       const isRepositoryCleanedUp = await this.cleanupRepository(this.enVars.PROJECT_NAME, ecr)
 
-      if (isRepositoryCleanedUp) {
+      if (isRepositoryCleanedUp >= 0) {
         console.log("✅ ECR repository cleanup completed")
       } else {
         console.error("❌ ECR repository cleanup failed")
@@ -192,11 +192,11 @@ export class Rollback {
       }
 
       if (
-        destroyResult.toString().toLowerCase().includes("error") ||
-        destroyResult.toString().toLowerCase().includes("failed") ||
-        destroyResult.toString().toLowerCase().includes("invalid")
+        destroyResult?.toString()?.toLowerCase()?.includes("error") ||
+        destroyResult?.toString()?.toLowerCase()?.includes("failed") ||
+        destroyResult?.toString()?.toLowerCase()?.includes("invalid")
       ) {
-        console.error(`❌ Terraform destroy failed:\n${destroyResult.toString()}\n`)
+        console.error(`❌ Terraform destroy failed:\n${destroyResult?.toString()}\n`)
       } else {
         Configuration.updateEnvFile(this.targetEnvironment, {
           VPC_ID: "vpc-00000000000000000",
@@ -302,8 +302,14 @@ export class Rollback {
 
       return images
     } catch (error) {
-      console.error(`Error listing images in repository ${repositoryName}:`, error)
-      throw error
+      if ((error as Error).message?.includes("RepositoryNotFoundException")) {
+        return []
+      } else if ((error as Error).message?.includes("does not exist in the registry")) {
+        return []
+      } else {
+        console.error(`❌ Error to list images in repository ${repositoryName}`, (error as Error).message)
+        process.exit(1)
+      }
     }
   }
 
@@ -345,7 +351,7 @@ export class Rollback {
       return deletedCount
     } catch (error) {
       console.error(`Error cleaning up repository ${repositoryName}:`, error)
-      throw error
+      // throw error
     }
   }
 
@@ -364,7 +370,7 @@ export class Rollback {
       return isEmpty
     } catch (error) {
       console.error(`Error checking if repository ${repositoryName} is empty:`, error)
-      throw error
+      // throw error
     }
   }
 
@@ -435,8 +441,12 @@ export class Rollback {
 
       return objects
     } catch (error) {
-      console.error(`Error listing objects in bucket ${bucketName}:`, error)
-      throw error
+      if ((error as Error).message?.includes("NoSuchBucket") || (error as Error).message?.includes("The specified bucket does not exist")) {
+        return []
+      } else {
+        console.error(`❌ Error to get objects in bucket ${bucketName}`, (error as Error).message)
+        process.exit(1)
+      }
     }
   }
 
@@ -481,7 +491,7 @@ export class Rollback {
       return deletedCount
     } catch (error) {
       console.error(`Error cleaning up bucket ${bucketName}:`, error)
-      throw error
+      // throw error
     }
   }
 
@@ -500,7 +510,7 @@ export class Rollback {
       return isEmpty
     } catch (error) {
       console.error(`Error checking if bucket ${bucketName} is empty:`, error)
-      throw error
+      // throw error
     }
   }
 }

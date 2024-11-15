@@ -42,7 +42,7 @@ resource "aws_s3_bucket_public_access_block" "artifacts" {
 # Upload docker-compose.yml to S3
 resource "aws_s3_object" "docker_compose" {
   bucket = aws_s3_bucket.artifacts.id
-  key    = "config/docker-compose.yml"
+  key    = "docker-compose.yml"
   source = "${path.module}/docker-compose.yml"
   etag   = filemd5("${path.module}/docker-compose.yml")
 
@@ -52,20 +52,4 @@ resource "aws_s3_object" "docker_compose" {
       Name = "docker-compose-config"
     }
   )
-}
-
-# SNS Topic for configuration updates
-resource "aws_sns_topic" "config_updates" {
-  name = "${var.project_name}-config-updates"
-}
-
-# S3 bucket notification to SNS
-resource "aws_s3_bucket_notification" "config_updates" {
-  bucket = aws_s3_bucket.artifacts.id
-
-  topic {
-    topic_arn = aws_sns_topic.config_updates.arn
-    events    = ["s3:ObjectCreated:*", "s3:ObjectRemoved:*"]
-    filter_prefix = "config/"
-  }
 }

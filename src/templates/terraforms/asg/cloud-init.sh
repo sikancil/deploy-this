@@ -136,7 +136,14 @@ chmod 600 /root/.aws/credentials
 
 # Setup temporary health check endpoint
 log "Setting up temporary health check endpoint"
-cat << EOF > /var/www/html/health
+mkdir -p /var/www/html/health/
+cat << EOF > /var/www/html/health/index.html
+OK
+EOF
+
+# Setup temporary health check endpoint
+log "Setting up temporary health check endpoint"
+cat << EOF > /var/www/html/index.html
 OK
 EOF
 
@@ -144,6 +151,7 @@ EOF
 log "Starting temporary health check server"
 sed -i 's/server.port.*=.*80/server.port = 3000/' /etc/lighttpd/lighttpd.conf
 systemctl start lighttpd
+service lighttpd restart
 
 # Function to download docker-compose.yml from S3 with retries
 download_docker_compose() {
@@ -153,7 +161,7 @@ download_docker_compose() {
 
     while [ $attempt -le $max_attempts ]; do
         log "Attempting to download docker-compose.yml from S3 (attempt $attempt/$max_attempts)"
-        if aws s3 cp s3://${project_name}-artifacts/config/docker-compose.yml /home/$STD_USER/app/docker-compose.yml; then
+        if aws s3 cp s3://${project_name}-artifacts/docker-compose.yml /home/$STD_USER/app/docker-compose.yml; then
             log "Successfully downloaded docker-compose.yml"
             chown $STD_USER:$STD_USER /home/$STD_USER/app/docker-compose.yml
             chmod 644 /home/$STD_USER/app/docker-compose.yml

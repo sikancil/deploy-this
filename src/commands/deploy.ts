@@ -1,51 +1,21 @@
-// import * as fs from "fs"
-// import * as path from "path"
 import { Deploy } from "../services/deploy"
 import { handleError } from "../utils/error.handler"
-// import { ObjectType } from "../utils/object"
-
-// const projectRoot = process.cwd()
-
-// TODO: later should breakdown to util functions
-// async function updateEnvFile(
-//   targetEnvironment: string,
-//   updates: Record<string, string>,
-// ): Promise<void> {
-//   if (ObjectType.isEmpty(targetEnvironment)) {
-//     console.warn(`❌ Target environment is empty (${targetEnvironment}). Skipping update.`)
-//     return
-//   }
-
-//   const envFile = path.join(projectRoot, `.env.dt.${targetEnvironment}`)
-//   console.log(`📝 Updating ${envFile}...`)
-//   let content = fs.readFileSync(envFile, "utf8")
-
-//   Object.entries(updates).forEach(([key, value]) => {
-//     const regex = new RegExp(`^${key}=.*$`, "m")
-//     if (content.match(regex)) {
-//       content = content.replace(regex, `${key}="${value}"`)
-//     } else {
-//       content += `\n${key}="${value}"`
-//     }
-//   })
-
-//   fs.writeFileSync(envFile, content)
-// }
-
-// This function runs the deployment process.
+import { ObjectType } from "../utils/object"
 
 export async function run(targetEnvironment: string): Promise<void> {
   try {
     const deploy = new Deploy(targetEnvironment)
     const result = await deploy.run()
-    console.log(`🚀 Deployment completed.`, result)
-
-    // if (result?.vpcId && result?.igwId) {
-    //   await updateEnvFile(targetEnvironment, {
-    //     VPC_ID: result.vpcId,
-    //     IGW_ID: result.igwId
-    //   })
-    // }
+    if (ObjectType.isEmpty(result)) {
+      console.warn(`❗️ WARN: Deployment failed!.`)
+      return
+    } else {
+      if (!ObjectType.isEmpty(result.vpcId) && !ObjectType.isEmpty(result.igwId)) {
+        console.log(`🚀 Deployment completed.`, result)
+      } else {
+        console.warn(`❌ Deployment failed!.`)
+      }
+    }
   } catch (error) {
     if (error instanceof Error) {
       switch (error.name) {
@@ -87,5 +57,3 @@ export async function run(targetEnvironment: string): Promise<void> {
     }
   }
 }
-
-// TODO: Implement other commands (destroy, plan, apply, import, state) with similar error handling
