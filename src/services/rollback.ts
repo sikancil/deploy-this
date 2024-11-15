@@ -1,15 +1,13 @@
-import { Configuration } from './../utils/configuration';
+import { ObjectType } from "./../utils/object"
+import { Configuration } from "./../utils/configuration"
 import * as fs from "node:fs"
 import * as path from "node:path"
 import { execSync } from "node:child_process"
-// import prompts from "prompts"
-// import { EC2Client } from "@aws-sdk/client-ec2"
-// import { ObjectType } from "../utils/object"
 import { ShellPrompts } from "../utils/shell.prompts"
 import { Validation } from "../utils/validation"
-// import { Configuration } from "../utils/configuration"
-// import { patchEnvs } from "../utils/env"
 import { handleError } from "../utils/error.handler"
+import { ECR, ImageIdentifier } from "@aws-sdk/client-ecr"
+import { ObjectIdentifier, S3 } from "@aws-sdk/client-s3"
 
 import { DestroyType } from "../interfaces/common"
 
@@ -80,11 +78,32 @@ export class Rollback {
       this.runInit()
 
       // Clean up S3 artifacts before destroy
-      await this.cleanupS3Artifacts()
+      const s3 = new S3({ region: this.enVars.AWS_REGION })
+      // await this.cleanupS3Artifacts()
+      const isBucketCleanedUp = await this.cleanupBucket(
+        `${this.enVars.PROJECT_NAME}-artifacts`,
+        s3,
+      )
+
+      if (isBucketCleanedUp) {
+        console.log("✅ S3 bucket cleanup completed")
+      } else {
+        console.error("❌ S3 bucket cleanup failed")
+        process.exit(1)
+      }
 
       // Clean up ECR images before destroy
-      await this.cleanupECRImages()
-      
+      const ecr = new ECR({ region: this.enVars.AWS_REGION })
+      // await this.cleanupECRImages()
+      const isRepositoryCleanedUp = await this.cleanupRepository(this.enVars.PROJECT_NAME, ecr)
+
+      if (isRepositoryCleanedUp) {
+        console.log("✅ ECR repository cleanup completed")
+      } else {
+        console.error("❌ ECR repository cleanup failed")
+        process.exit(1)
+      }
+
       // Run destroy based on selected type
       await this.runDestroy(selectedDestroyType, this.force)
     } catch (error) {
@@ -190,7 +209,7 @@ export class Rollback {
     }
   }
 
-  private async cleanupS3Artifacts(): Promise<void> {
+  private async cliCleanupS3Artifacts(): Promise<void> {
     try {
       console.info("Cleaning up S3 artifacts...")
 
@@ -202,7 +221,7 @@ export class Rollback {
       const verifyCommand = `aws s3 ls s3://${this.enVars.PROJECT_NAME}-artifacts`
       const verifyResult = execSync(verifyCommand, { stdio: "inherit" })
 
-      if (verifyResult.toString().includes("NoSuchBucket")) {
+      if (verifyResult?.toString()?.includes("NoSuchBucket") || ObjectType.isEmpty(verifyResult)) {
         console.info("✅ S3 artifacts cleanup completed")
       } else {
         console.error("❌ S3 artifacts cleanup failed")
@@ -213,7 +232,7 @@ export class Rollback {
     }
   }
 
-  private async cleanupECRImages(): Promise<void> {
+  private async cliCleanupECRImages(): Promise<void> {
     try {
       console.info("Cleaning up ECR images...")
 
@@ -227,7 +246,7 @@ export class Rollback {
       for (const imageId of imageIds) {
         existingImageIds.push(imageId)
       }
-      
+
       // Delete all images in the ECR repository using AWS CLI
       for await (const imageId of existingImageIds) {
         console.info(`Deleting image ${imageId}...`)
@@ -253,6 +272,235 @@ export class Rollback {
     } catch (error) {
       console.warn("Warning: Failed to cleanup ECR images:", error)
       // Continue with destroy even if cleanup fails
+    }
+  }
+
+  // ECR Methods
+  /**
+   * Lists all images in an ECR repository
+   * @param repositoryName The name of the ECR repository
+   * @param ecrInstance The ECR client instance
+   * @returns Array of image details
+   */
+  async listRepositoryImages(repositoryName: string, ecrInstance: ECR): Promise<ImageIdentifier[]> {
+    try {
+      const images: ImageIdentifier[] = []
+      let nextToken: string | undefined
+
+      do {
+        const response = await ecrInstance.listImages({
+          repositoryName,
+          nextToken,
+        })
+
+        if (response.imageIds) {
+          images.push(...response.imageIds)
+        }
+
+        nextToken = response.nextToken
+      } while (nextToken)
+
+      return images
+    } catch (error) {
+      console.error(`Error listing images in repository ${repositoryName}:`, error)
+      throw error
+    }
+  }
+
+  /**
+   * Deletes all images from an ECR repository
+   * @param repositoryName The name of the ECR repository
+   * @param ecrInstance The ECR client instance
+   * @returns Number of images deleted
+   */
+  async cleanupRepository(repositoryName: string, ecrInstance: ECR): Promise<number> {
+    try {
+      const images = await this.listRepositoryImages(repositoryName, ecrInstance)
+
+      if (images.length === 0) {
+        console.log(`Repository ${repositoryName} is already empty`)
+        return 0
+      }
+
+      // AWS API has a limit of 100 images per batch delete
+      const batchSize = 100
+      let deletedCount = 0
+
+      for (let i = 0; i < images.length; i += batchSize) {
+        const batch = images.slice(i, i + batchSize)
+
+        const response = await ecrInstance.batchDeleteImage({
+          repositoryName,
+          imageIds: batch,
+        })
+
+        if (response.failures && response.failures.length > 0) {
+          console.warn("Some images failed to delete:", response.failures)
+        }
+
+        deletedCount += response.imageIds?.length || 0
+      }
+
+      console.log(`Successfully deleted ${deletedCount} images from ${repositoryName}`)
+      return deletedCount
+    } catch (error) {
+      console.error(`Error cleaning up repository ${repositoryName}:`, error)
+      throw error
+    }
+  }
+
+  /**
+   * Verifies if an ECR repository is empty
+   * @param repositoryName The name of the ECR repository
+   * @param ecrInstance The ECR client instance
+   * @returns boolean indicating if repository is empty
+   */
+  async isRepositoryEmpty(repositoryName: string, ecrInstance: ECR): Promise<boolean> {
+    try {
+      const images = await this.listRepositoryImages(repositoryName, ecrInstance)
+      const isEmpty = images.length === 0
+
+      console.log(`Repository ${repositoryName} ${isEmpty ? "is" : "is not"} empty`)
+      return isEmpty
+    } catch (error) {
+      console.error(`Error checking if repository ${repositoryName} is empty:`, error)
+      throw error
+    }
+  }
+
+  // S3 Methods
+  /**
+   * Lists all objects in an S3 bucket, including objects in all subdirectories
+   * @param bucketName The name of the S3 bucket
+   * @param s3Instance The S3 client instance
+   * @returns Array of S3 objects with their keys and versions
+   */
+  async listBucketObjects(bucketName: string, s3Instance?: S3): Promise<ObjectIdentifier[]> {
+    try {
+      const objects: ObjectIdentifier[] = []
+      let continuationToken: string | undefined
+
+      // First, list all current objects
+      do {
+        const response = await s3Instance.listObjectsV2({
+          Bucket: bucketName,
+          ContinuationToken: continuationToken,
+        })
+
+        if (response.Contents) {
+          objects.push(
+            ...response.Contents.map((obj) => ({
+              Key: obj.Key as string,
+            })),
+          )
+        }
+
+        continuationToken = response.NextContinuationToken
+      } while (continuationToken)
+
+      // Then, if versioning is enabled, list all versions
+      let keyMarker: string | undefined
+      let versionIdMarker: string | undefined
+
+      do {
+        const response = await s3Instance
+          .listObjectVersions({
+            Bucket: bucketName,
+            KeyMarker: keyMarker,
+            VersionIdMarker: versionIdMarker,
+          })
+
+        // Add delete markers and non-current versions
+        if (response.DeleteMarkers) {
+          objects.push(
+            ...response.DeleteMarkers.map((marker) => ({
+              Key: marker.Key as string,
+              VersionId: marker.VersionId,
+            })),
+          )
+        }
+
+        if (response.Versions) {
+          objects.push(
+            ...response.Versions.map((version) => ({
+              Key: version.Key as string,
+              VersionId: version.VersionId,
+            })),
+          )
+        }
+
+        keyMarker = response.NextKeyMarker
+        versionIdMarker = response.NextVersionIdMarker
+      } while (keyMarker || versionIdMarker)
+
+      return objects
+    } catch (error) {
+      console.error(`Error listing objects in bucket ${bucketName}:`, error)
+      throw error
+    }
+  }
+
+  /**
+   * Deletes all objects from an S3 bucket, including all versions and delete markers
+   * @param bucketName The name of the S3 bucket
+   * @param s3Instance The S3 client instance
+   * @returns Number of objects deleted
+   */
+  async cleanupBucket(bucketName: string, s3Instance: S3): Promise<number> {
+    try {
+      const objects = await this.listBucketObjects(bucketName, s3Instance)
+
+      if (objects.length === 0) {
+        console.log(`Bucket ${bucketName} is already empty`)
+        return 0
+      }
+
+      // AWS API has a limit of 1000 objects per batch delete
+      const batchSize = 1000
+      let deletedCount = 0
+
+      for (let i = 0; i < objects.length; i += batchSize) {
+        const batch = objects.slice(i, i + batchSize)
+
+        const response = await s3Instance.deleteObjects({
+          Bucket: bucketName,
+          Delete: {
+            Objects: batch,
+            Quiet: false,
+          },
+        })
+
+        if (response.Errors && response.Errors.length > 0) {
+          console.warn("Some objects failed to delete:", response.Errors)
+        }
+
+        deletedCount += response.Deleted?.length || 0
+      }
+
+      console.log(`Successfully deleted ${deletedCount} objects from ${bucketName}`)
+      return deletedCount
+    } catch (error) {
+      console.error(`Error cleaning up bucket ${bucketName}:`, error)
+      throw error
+    }
+  }
+
+  /**
+   * Verifies if an S3 bucket is completely empty (no objects, versions, or delete markers)
+   * @param bucketName The name of the S3 bucket
+   * @param s3Instance The S3 client instance
+   * @returns boolean indicating if bucket is empty
+   */
+  async isBucketEmpty(bucketName: string, s3Instance: S3): Promise<boolean> {
+    try {
+      const objects = await this.listBucketObjects(bucketName, s3Instance)
+      const isEmpty = objects.length === 0
+
+      console.log(`Bucket ${bucketName} ${isEmpty ? "is" : "is not"} empty`)
+      return isEmpty
+    } catch (error) {
+      console.error(`Error checking if bucket ${bucketName} is empty:`, error)
+      throw error
     }
   }
 }
