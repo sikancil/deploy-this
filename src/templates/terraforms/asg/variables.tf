@@ -16,6 +16,12 @@ variable "node_env" {
   # default     = "staging"
 }
 
+variable "std_user" {
+  description = "The standard user to use for the EC2 instance"
+  type        = string
+  default     = "ubuntu"
+}
+
 variable "aws_profile" {
   description = "The AWS profile to use"
   type        = string

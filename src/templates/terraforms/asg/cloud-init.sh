@@ -4,7 +4,7 @@
 LOG_FILE="/opt/cloud-init.vm.log"
 
 # Standard User (non-root)
-STD_USER="ubuntu"
+STD_USER=${std_user:-"ubuntu"}
 
 # Function to log messages
 log() {
