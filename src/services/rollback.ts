@@ -1,4 +1,3 @@
-import { ObjectType } from "./../utils/object"
 import { Configuration } from "./../utils/configuration"
 import * as fs from "node:fs"
 import * as path from "node:path"
@@ -14,7 +13,6 @@ import { DestroyType } from "../interfaces/common"
 export class Rollback {
   private projectRoot: string
   private targetEnvironment: string
-  // private deploymentType: string | undefined
   private destroyType: DestroyType | undefined
   private force: boolean
   private terraformDir: string
@@ -63,9 +61,6 @@ export class Rollback {
         throw new Error(`Terraform directory not found for environment: ${this.targetEnvironment}`)
       }
 
-      // Determines the deployment type based on the files present in the Terraform directory.
-      // this.deploymentType = Validation.checkDeploymentType(this.terraformDir)
-
       // Change to terraform directory
       process.chdir(this.terraformDir)
 
@@ -79,7 +74,6 @@ export class Rollback {
 
       // Clean up S3 artifacts before destroy
       const s3 = new S3({ region: this.enVars.AWS_REGION })
-      // await this.cleanupS3Artifacts()
       const isBucketCleanedUp = await this.cleanupBucket(
         `${this.enVars.PROJECT_NAME}-artifacts`,
         s3,
@@ -94,7 +88,6 @@ export class Rollback {
 
       // Clean up ECR images before destroy
       const ecr = new ECR({ region: this.enVars.AWS_REGION })
-      // await this.cleanupECRImages()
       const isRepositoryCleanedUp = await this.cleanupRepository(this.enVars.PROJECT_NAME, ecr)
 
       if (isRepositoryCleanedUp >= 0) {
@@ -133,40 +126,61 @@ export class Rollback {
       if (destroyType === "partial") {
         // Destroy resources in reverse dependency order
         const resources = [
-          // First layer - dependent resources
+          // First layer - Load Balancer and Target Group resources
+          "aws_lb_listener.http",
+          "aws_lb_listener.https", 
+          "aws_lb.app",
+          "aws_lb_target_group.app",
+          // Second layer - AutoScaling resources
           "aws_autoscaling_attachment.asg_attachment_alb",
           "aws_autoscaling_lifecycle_hook.termination_hook",
           "aws_autoscaling_policy.cpu_policy",
           "aws_autoscaling_policy.memory_policy",
-          "aws_cloudwatch_metric_alarm.high_cpu",
-          // Second layer - core resources
-          "aws_codedeploy_deployment_group.app_dg",
           "aws_autoscaling_group.app",
-          "aws_lb_listener.http",
-          "aws_lb_listener.https",
-          "aws_lb.app",
           "aws_launch_template.app",
-          // Third layer - supporting resources
-          "aws_ecr_repository.app_repo",
+          // Third layer - Monitoring and Deployment resources
+          "aws_cloudwatch_metric_alarm.high_cpu",
+          "aws_codedeploy_deployment_group.app_dg",
           "aws_codedeploy_app.app",
-          "aws_lb_target_group.app",
+          "aws_ssm_parameter.current_instance_type",
+          // Fourth layer - Container and Storage resources
+          "aws_ecr_repository.app_repo",
+          "aws_s3_bucket_versioning.artifacts",
+          "aws_s3_bucket_server_side_encryption_configuration.artifacts",
+          "aws_s3_bucket_public_access_block.artifacts",
+          "aws_s3_object.docker_compose",
+          "aws_s3_bucket.artifacts",
+          // Fifth layer - IAM resources
+          "aws_iam_role_policy.s3_access",
           "aws_iam_role_policy_attachment.codedeploy_policy",
+          "aws_iam_role_policy_attachment.codedeploy_agent_policy",
           "aws_iam_role_policy_attachment.ec2_policy",
           "aws_iam_instance_profile.ec2_profile",
           "aws_iam_role.codedeploy_role",
           "aws_iam_role.ec2_role",
-          "aws_key_pair.dt_keypair",
-          "local_file.dt_rsa_private",
-          "tls_private_key.dt_private",
-          // Fourth layer - network resources (except VPC and IGW)
-          "aws_ssm_parameter.current_instance_type",
-          "aws_route_table_association.public[0]",
-          "aws_route_table_association.public[1]",
-          "aws_route_table.public",
-          "aws_subnet.public[0]",
-          "aws_subnet.public[1]",
+          // Sixth layer - Security and Access resources
+          "aws_security_group_rule.codedeploy_https",
+          "aws_security_group_rule.s3_endpoint",
+          "aws_security_group.vpc_endpoint",
           "aws_security_group.ec2",
           "aws_security_group.alb",
+          // Seventh layer - VPC Endpoint resources
+          "aws_vpc_endpoint.codedeploy",
+          "aws_vpc_endpoint.ecr_api",
+          "aws_vpc_endpoint.ecr_dkr",
+          "aws_vpc_endpoint.logs",
+          "aws_vpc_endpoint.s3",
+          "aws_vpc_endpoint.ssm",
+          // Eighth layer - Network resources (except VPC and IGW)
+          "aws_route_table_association.public[1]",
+          "aws_route_table_association.public[0]",
+          "aws_route_table.public",
+          "aws_subnet.public[1]",
+          "aws_subnet.public[0]",
+          // Ninth layer - Key Pair resources
+          "aws_key_pair.dt_keypair",
+          "local_file.dt_rsa_private",
+          "tls_private_key.dt_private"
         ]
 
         // build a string of all the resources to destroy
@@ -205,73 +219,15 @@ export class Rollback {
         console.info(`✅ Terraform destroy completed successfully.\n`)
       }
     } catch (error) {
-      throw new Error(`Terraform destroy failed: ${error}`)
-    }
-  }
-
-  private async cliCleanupS3Artifacts(): Promise<void> {
-    try {
-      console.info("Cleaning up S3 artifacts...")
-
-      // Delete all objects in the S3 bucket
-      const deleteCommand = `aws s3 rm s3://${this.enVars.PROJECT_NAME}-artifacts --recursive`
-      execSync(deleteCommand, { stdio: "inherit" })
-
-      // Verify that the S3 bucket is empty
-      const verifyCommand = `aws s3 ls s3://${this.enVars.PROJECT_NAME}-artifacts`
-      const verifyResult = execSync(verifyCommand, { stdio: "inherit" })
-
-      if (verifyResult?.toString()?.includes("NoSuchBucket") || ObjectType.isEmpty(verifyResult)) {
-        console.info("✅ S3 artifacts cleanup completed")
+      if (
+        (error as Error)?.message?.includes("request send failed") ||
+        (error as Error)?.message?.includes("dial tcp: lookup") ||
+        (error as Error)?.message?.includes("amazonaws.com: no such host")
+      ) {
+        console.error(`❌ Terraform destroy failed:\n${(error as Error)?.message}\n`)
       } else {
-        console.error("❌ S3 artifacts cleanup failed")
+        throw new Error(`Terraform destroy failed: ${error}`)
       }
-    } catch (error) {
-      console.warn("Warning: Failed to cleanup S3 artifacts:", error)
-      // Continue with destroy even if cleanup fails
-    }
-  }
-
-  private async cliCleanupECRImages(): Promise<void> {
-    try {
-      console.info("Cleaning up ECR images...")
-
-      // Get all image IDs in the ECR repository using AWS CLI
-      const existingImageIds: string[] = []
-      const listImageCommand = `aws ecr list-images \
-        --repository-name ${this.enVars.PROJECT_NAME} \
-        --query 'imageIds[*]'`
-      const listImageResult = execSync(listImageCommand, { stdio: "inherit" })
-      const imageIds = JSON.parse(listImageResult.toString())
-      for (const imageId of imageIds) {
-        existingImageIds.push(imageId)
-      }
-
-      // Delete all images in the ECR repository using AWS CLI
-      for await (const imageId of existingImageIds) {
-        console.info(`Deleting image ${imageId}...`)
-
-        const deleteCommand = `aws ecr batch-delete-image \
-          --repository-name ${this.enVars.PROJECT_NAME} \
-          --image-ids ${imageId}`
-
-        execSync(deleteCommand, { stdio: "inherit" })
-      }
-
-      // Verify that the ECR repository is empty
-      const verifyCommand = `aws ecr describe-repositories \
-        --repository-names ${this.enVars.PROJECT_NAME} \
-        --query 'repositories[*].repositoryUri'`
-
-      const verifyResult = execSync(verifyCommand, { stdio: "inherit" })
-      if (verifyResult.toString().includes("null")) {
-        console.info("✅ ECR images cleanup completed")
-      } else {
-        console.error("❌ ECR images cleanup failed")
-      }
-    } catch (error) {
-      console.warn("Warning: Failed to cleanup ECR images:", error)
-      // Continue with destroy even if cleanup fails
     }
   }
 
@@ -307,7 +263,10 @@ export class Rollback {
       } else if ((error as Error).message?.includes("does not exist in the registry")) {
         return []
       } else {
-        console.error(`❌ Error to list images in repository ${repositoryName}`, (error as Error).message)
+        console.error(
+          `❌ Error to list images in repository ${repositoryName}`,
+          (error as Error).message,
+        )
         process.exit(1)
       }
     }
@@ -409,12 +368,11 @@ export class Rollback {
       let versionIdMarker: string | undefined
 
       do {
-        const response = await s3Instance
-          .listObjectVersions({
-            Bucket: bucketName,
-            KeyMarker: keyMarker,
-            VersionIdMarker: versionIdMarker,
-          })
+        const response = await s3Instance.listObjectVersions({
+          Bucket: bucketName,
+          KeyMarker: keyMarker,
+          VersionIdMarker: versionIdMarker,
+        })
 
         // Add delete markers and non-current versions
         if (response.DeleteMarkers) {
@@ -441,7 +399,10 @@ export class Rollback {
 
       return objects
     } catch (error) {
-      if ((error as Error).message?.includes("NoSuchBucket") || (error as Error).message?.includes("The specified bucket does not exist")) {
+      if (
+        (error as Error).message?.includes("NoSuchBucket") ||
+        (error as Error).message?.includes("The specified bucket does not exist")
+      ) {
         return []
       } else {
         console.error(`❌ Error to get objects in bucket ${bucketName}`, (error as Error).message)
