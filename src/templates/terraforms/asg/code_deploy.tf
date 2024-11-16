@@ -21,8 +21,14 @@ resource "aws_codedeploy_deployment_group" "app_dg" {
   }
 
   deployment_style {
-    # deployment_option = "WITH_TRAFFIC_CONTROL"
+    deployment_option = "WITH_TRAFFIC_CONTROL"
     deployment_type   = "IN_PLACE"
+  }
+
+  trigger_configuration {
+    trigger_events = ["DeploymentSuccess", "DeploymentFailure"]
+    trigger_name   = "deployment-trigger"
+    trigger_target_arn = aws_autoscaling_group.app.arn
   }
 
   autoscaling_groups = [aws_autoscaling_group.app.name]

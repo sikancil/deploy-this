@@ -56,6 +56,12 @@ resource "aws_iam_role_policy_attachment" "ec2_container_service_policy" {
   role       = aws_iam_role.ec2_role.name
 }
 
+# Attach the AWS CodeDeploy Service Role policy
+resource "aws_iam_role_policy_attachment" "codedeploy_service_role" {
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole"
+  role       = aws_iam_role.codedeploy_role.name
+}
+
 resource "aws_iam_role_policy_attachment" "codedeploy_agent_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole"
   role       = aws_iam_role.ec2_role.name
