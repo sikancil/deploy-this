@@ -13,6 +13,8 @@ import { run as cmdIAM } from "./commands/iam"
 import { run as cmdVersion } from "./commands/version"
 import { run as cmdBitbucket } from "./commands/bitbucket"
 
+import { ObjectType } from "./utils/object"
+
 // Create a new command-line interface (CLI) program
 const program = new Command()
 // Set the current working directory as the target directory
@@ -48,11 +50,18 @@ program
 // It calls the cmdDeploy function from ./commands/deploy to perform the deployment.
 program
   .command("deploy [targetEnvironment]")
+  .option("-f, --force", "Force deploying infrastructure")
   .description("Deploy infrastructure")
-  .action(async (targetEnvironment) => {
+  .action(async (targetEnvironment, args) => {
+    // Determine if the force flag is set
+    const doForce = args?.force === true
     try {
+      if (doForce && ObjectType.isEmpty(targetEnvironment)) {
+        throw new Error("Force option requires target environment to be provided.")
+      }
+
       // Run the deployment command
-      await cmdDeploy(targetEnvironment)
+      await cmdDeploy(targetEnvironment, doForce)
     } catch (error) {
       // Handle any errors during deployment
       handleError(`Error during deployment.`, error)
@@ -104,6 +113,11 @@ program
     // Determine if the force flag is set
     const doForce = args?.force === true
     try {
+      if (doForce && ObjectType.isEmpty(targetEnvironment) && ObjectType.isEmpty(destroyOptions)) {
+        throw new Error("Force option requires target environment and destroy options to be provided.")
+      }
+
+      // Run the rollback command
       await cmdRollback(targetEnvironment, destroyOptions, doForce)
     } catch (error) {
       handleError(`Error during rollback.`, error)
