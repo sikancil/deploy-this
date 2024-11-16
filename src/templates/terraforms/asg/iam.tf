@@ -1,51 +1,3 @@
-# IAM role for CodeDeploy
-resource "aws_iam_role" "codedeploy_role" {
-  name = "${var.project_name}-codedeploy-role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
-        Principal = {
-          Service = "codedeploy.amazonaws.com"
-        }
-      }
-    ]
-  })
-}
-
-# IAM policy for CodeDeploy permissions
-# resource "aws_iam_user_policy" "codedeploy_policy" {
-#   name = "${var.project_name}-codedeploy-policy"
-#   user = "dimas-console"  # Replace with your IAM user if different
-
-#   policy = jsonencode({
-#     Version = "2012-10-17"
-#     Statement = [
-#       {
-#         Effect = "Allow"
-#         Action = [
-#           "codedeploy:*",
-#           "ec2:*",
-#           "elasticloadbalancing:*",
-#           "autoscaling:*",
-#           "cloudwatch:*",
-#           "s3:*",
-#           "sns:*",
-#           "iam:CreateRole",
-#           "iam:GetRole",
-#           "iam:PutRolePolicy",
-#           "iam:DeleteRolePolicy",
-#           "iam:DeleteRole"
-#         ]
-#         Resource = "*"
-#       }
-#     ]
-#   })
-# }
-
 # IAM role for EC2 instances
 resource "aws_iam_role" "ec2_role" {
   name = "${var.project_name}-ec2-role"
@@ -64,9 +16,22 @@ resource "aws_iam_role" "ec2_role" {
   })
 }
 
-resource "aws_iam_role_policy_attachment" "codedeploy_policy" {
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole"
-  role       = aws_iam_role.codedeploy_role.name
+# IAM role for CodeDeploy
+resource "aws_iam_role" "codedeploy_role" {
+  name = "${var.project_name}-codedeploy-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "codedeploy.amazonaws.com"
+        }
+      }
+    ]
+  })
 }
 
 resource "aws_iam_instance_profile" "ec2_profile" {
@@ -80,6 +45,11 @@ resource "aws_iam_instance_profile" "ec2_profile" {
 #   role       = aws_iam_role.ec2_role.name
 # }
 
+# resource "aws_iam_role_policy_attachment" "codedeploy_policy" {
+#   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole"
+#   role       = aws_iam_role.codedeploy_role.name
+# }
+
 # Attach EC2 Container Service role policy
 resource "aws_iam_role_policy_attachment" "ec2_container_service_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
@@ -88,6 +58,12 @@ resource "aws_iam_role_policy_attachment" "ec2_container_service_policy" {
 
 resource "aws_iam_role_policy_attachment" "codedeploy_agent_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole"
+  role       = aws_iam_role.ec2_role.name
+}
+
+# Add AWS Systems Manager (SSM) access for EC2 instances
+resource "aws_iam_role_policy_attachment" "ec2_ssm_policy" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
   role       = aws_iam_role.ec2_role.name
 }
 
@@ -144,10 +120,4 @@ resource "aws_iam_role_policy" "s3_access" {
       }
     ]
   })
-}
-
-# Add AWS Systems Manager (SSM) access for EC2 instances
-resource "aws_iam_role_policy_attachment" "ec2_ssm_policy" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
-  role       = aws_iam_role.ec2_role.name
 }
