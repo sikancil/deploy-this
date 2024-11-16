@@ -208,7 +208,7 @@ export class Deploy {
       console.log()
 
       if (!force) {
-        const confirmToDeploy = await ShellPrompts.promptConfirmToDeploy(this.targetEnvironment)
+        const confirmToDeploy = await ShellPrompts.promptConfirmToDeploy(this.enVars.PROJECT_NAME, this.targetEnvironment)
         if (!confirmToDeploy) {
           console.warn("❗️ Deployment cancelled.")
           console.log()

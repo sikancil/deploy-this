@@ -57,11 +57,11 @@ export class ShellPrompts {
 
   // promptConfirmToDeploy prompts the user to confirm deployment.
   // NOTE: Prompt to confirm deployment (Y/N).
-  static async promptConfirmToDeploy(projectName: string): Promise<boolean> {
+  static async promptConfirmToDeploy(projectName: string, targetEnvironment: string): Promise<boolean> {
     const response = await prompts({
       type: "confirm",
       name: "confirmDeployment",
-      message: `Deployment will CREATE or UPDATES resources for ${projectName} within AWS. Proceed?`,
+      message: `Deployment will CREATE or UPDATES resources ${projectName} into AWS ${targetEnvironment} environment. Proceed?`,
       initial: false,
     })
     return response.confirmDeployment
