@@ -2,10 +2,10 @@ import { Deploy } from "../services/deploy"
 import { handleError } from "../utils/error.handler"
 import { ObjectType } from "../utils/object"
 
-export async function run(targetEnvironment: string): Promise<void> {
+export async function run(targetEnvironment: string, force: boolean = false): Promise<void> {
   try {
-    const deploy = new Deploy(targetEnvironment)
-    const result = await deploy.run()
+    const deploy = new Deploy(targetEnvironment, false)
+    const result = await deploy.run(force)
     if (ObjectType.isEmpty(result)) {
       console.warn(`❗️ WARN: Deployment failed!.`)
       return

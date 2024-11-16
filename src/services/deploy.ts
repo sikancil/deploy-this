@@ -33,7 +33,7 @@ export class Deploy {
 
   // run method orchestrates the entire deployment process.
   // NOTE: It handles environment variable checks, Terraform initialization, resource import, plan generation, and application.
-  async run(): Promise<{
+  async run(force: boolean = false): Promise<{
     vpcId?: string | null | undefined
     igwId?: string | null | undefined
   }> {
@@ -69,9 +69,6 @@ export class Deploy {
     })
 
     try {
-      // Sets auto-approval for Terraform apply to false.
-      const tfApplyAutoApprove = false
-
       // Initializes Terraform.
       this.runInit()
 
@@ -176,18 +173,20 @@ export class Deploy {
             )
             console.log()
 
-            // Prompt confirmation to create new VPC and IGW
-            const vpcConfirm = await prompts({
-              type: "confirm",
-              name: "create_new_vpc_igw",
-              message: "Deployment will create new VPC and IGW. Continue?",
-              initial: false,
-            })
+            if (!force && !this.optCreateNewVpc) {
+              // Prompt confirmation to create new VPC and IGW
+              const vpcConfirm = await prompts({
+                type: "confirm",
+                name: "create_new_vpc_igw",
+                message: "Deployment will create new VPC and IGW. Continue?",
+                initial: false,
+              })
 
-            if (!vpcConfirm.create_new_vpc_igw) {
-              console.warn("❗️ WARN: Deployment canceled by user.")
-              console.log()
-              process.exit(0)
+              if (!vpcConfirm.create_new_vpc_igw) {
+                console.warn("❗️ WARN: Deployment canceled by user.")
+                console.log()
+                process.exit(0)
+              }
             }
           }
         }
@@ -208,8 +207,17 @@ export class Deploy {
       })
       console.log()
 
+      if (!force) {
+        const confirmToDeploy = await ShellPrompts.promptConfirmToDeploy(this.targetEnvironment)
+        if (!confirmToDeploy) {
+          console.warn("❗️ Deployment cancelled.")
+          console.log()
+          process.exit(0)
+        }
+      }
+
       // Applies the Terraform plan.
-      this.runApply(tfApplyAutoApprove)
+      this.runApply(force)
       console.log()
 
       // Shows the Terraform status.
@@ -295,13 +303,13 @@ export class Deploy {
 
   // runApply applies the generated Terraform plan.
   // NOTE: It executes the 'terraform apply' command with optional auto-approval. Interacts with the Terraform CLI.
-  private runApply(tfApplyAutoApprove: boolean): void {
+  private runApply(force: boolean = false): void {
     try {
       console.log("Applying Terraform plan...") // NOTE: Added more descriptive message.
       const command =
         // NOTE: commented out, check later.
         // `${this.tfVars.length > 0 ? this.tfVars.join(" ").concat(" ") : ""}` +
-        `terraform apply` + `${tfApplyAutoApprove ? " -auto-approve" : ""}`
+        `terraform apply${force ? " -auto-approve" : ""}`
       execSync(command, { stdio: "inherit" })
       console.info("✅ Terraform apply completed successfully.")
     } catch (error) {
