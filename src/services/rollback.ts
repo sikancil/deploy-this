@@ -130,6 +130,15 @@ export class Rollback {
 
       let destroyResult: Buffer
 
+      if (!force) {
+        const confirmToDestroy = await ShellPrompts.promptConfirmToDestroy(this.targetEnvironment)
+        if (!confirmToDestroy) {
+          console.warn("❗️ Destroy cancelled.")
+          console.log()
+          process.exit(0)
+        }
+      }
+
       if (destroyType === "partial") {
         // Destroy resources in reverse dependency order
         const resources = [
