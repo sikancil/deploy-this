@@ -14,8 +14,6 @@ resource "aws_launch_template" "app" {
     name = aws_iam_instance_profile.ec2_profile.name
   }
 
-  # vpc_security_group_ids = [aws_security_group.ec2.id]
-
   network_interfaces {
     # associate_public_ip_address = true
     associate_public_ip_address = var.map_public_ip

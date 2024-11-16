@@ -80,6 +80,22 @@ resource "aws_security_group" "ec2" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+  
+  # codedeploy_https
+  egress {
+    from_port         = 443
+    to_port           = 443
+    protocol          = "tcp"
+    cidr_blocks       = ["0.0.0.0/0"]
+  }
+  
+  # s3_endpoint
+  egress {
+    from_port         = 443
+    to_port           = 443
+    protocol          = "tcp"
+    prefix_list_ids   = [data.aws_prefix_list.s3.id]
+  }
 
   tags = merge(
     var.common_tags,
@@ -116,24 +132,4 @@ resource "aws_security_group" "vpc_endpoint" {
       Name = "${var.project_name}-vpce-sg"
     }
   )
-}
-
-# Add these to your security group rules in terraform
-resource "aws_security_group_rule" "codedeploy_https" {
-  type              = "egress"
-  from_port         = 443
-  to_port           = 443
-  protocol          = "tcp"
-  cidr_blocks       = ["0.0.0.0/0"]
-  security_group_id = aws_security_group.ec2.id
-}
-
-# Allow communication with S3
-resource "aws_security_group_rule" "s3_endpoint" {
-  type              = "egress"
-  from_port         = 443
-  to_port           = 443
-  protocol          = "tcp"
-  prefix_list_ids   = [data.aws_prefix_list.s3.id]
-  security_group_id = aws_security_group.ec2.id
 }
