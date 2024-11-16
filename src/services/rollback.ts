@@ -133,7 +133,7 @@ export class Rollback {
       if (!force) {
         const confirmToDestroy = await ShellPrompts.promptConfirmToDestroy(this.targetEnvironment)
         if (!confirmToDestroy) {
-          console.warn("❗️ Destroy cancelled.")
+          console.warn("❗️ Rollback cancelled.")
           console.log()
           process.exit(0)
         }
@@ -204,7 +204,7 @@ export class Rollback {
           return acc + ` -target=${resource}`
         }, "")
 
-        console.info(`Destroying partially (excludes VPC and IGW)...`)
+        console.info(`Rollback Partially (excludes VPC and IGW)...`)
 
         // execSync(`terraform destroy ${targetParamsAtOnce} -auto-approve`, { stdio: "inherit" })
         destroyResult = execSync(
@@ -227,25 +227,26 @@ export class Rollback {
         destroyResult?.toString()?.toLowerCase()?.includes("invalid") ||
         destroyResult?.toString()?.toLowerCase()?.includes("cancelled")
       ) {
-        console.error(`❌ Destroy failed. ${destroyResult?.toString()}\n`)
+        console.error(`❌ Rollback failed. ${destroyResult?.toString()}\n`)
       } else {
         Configuration.updateEnvFile(this.targetEnvironment, {
           VPC_ID: "vpc-00000000000000000",
           IGW_ID: "igw-00000000000000000",
         })
-        console.info(`✅ Destroy completed successfully.\n`)
+        console.info(`✅ Rollback completed successfully.\n`)
       }
     } catch (error) {
       // Restore Terraform state from backup
       this.restoreTerraformState(this.terraformDir)
 
-      if (
+      if ((error as Error)?.message?.includes("Command failed: terraform destroy")) {
+        console.warn(`❗️ Rollback cancelled.\n`)
+      } else if (
         (error as Error)?.message?.includes("request send failed") ||
         (error as Error)?.message?.includes("dial tcp: lookup") ||
-        (error as Error)?.message?.includes("amazonaws.com: no such host") ||
-        (error as Error)?.message?.includes("Command failed: terraform destroy")
+        (error as Error)?.message?.includes("amazonaws.com: no such host")
       ) {
-        console.error(`❌ Destroy failed. ${(error as Error)?.message}\n`)
+        console.error(`❌ Rollback failed. ${(error as Error)?.message}\n`)
       } else {
         throw error
       }
