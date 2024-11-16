@@ -2,6 +2,7 @@ import { Configuration } from "./../utils/configuration"
 import * as fs from "node:fs"
 import * as path from "node:path"
 import { execSync } from "node:child_process"
+import { ObjectType } from "../utils/object"
 import { ShellPrompts } from "../utils/shell.prompts"
 import { Validation } from "../utils/validation"
 import { handleError } from "../utils/error.handler"
@@ -13,28 +14,19 @@ import { DestroyType } from "../interfaces/common"
 export class Rollback {
   private projectRoot: string
   private targetEnvironment: string
-  private destroyType: DestroyType | undefined
-  private force: boolean
   private terraformDir: string
   private enVars: { [key: string]: string }
   private tfVars: string[]
 
-  constructor(
-    targetEnvironment?: string,
-    destroyType?: DestroyType | undefined,
-    force: boolean = false,
-  ) {
+  constructor(targetEnvironment?: string) {
     this.projectRoot = process.cwd()
     this.targetEnvironment = targetEnvironment || ""
-    // this.deploymentType = ""
-    this.destroyType = destroyType
-    this.force = force
     this.terraformDir = ""
     this.enVars = {}
     this.tfVars = []
   }
 
-  async run(): Promise<void> {
+  async run(destroyType: DestroyType | undefined, force: boolean = false): Promise<void> {
     try {
       // If targetEnvironment is not provided, prompt for selection
       if (!this.targetEnvironment) {
@@ -65,12 +57,21 @@ export class Rollback {
       process.chdir(this.terraformDir)
 
       // Prompt for destroy type
-      const selectedDestroyType = this.destroyType
-        ? this.destroyType
-        : await ShellPrompts.selectDestroyType()
+      if (ObjectType.isEmpty(destroyType)) {
+        destroyType = await ShellPrompts.selectDestroyType()
+      }
 
       // Initialize terraform
       this.runInit()
+
+      if (!force) {
+        const confirmToDestroy = await ShellPrompts.promptConfirmToDestroy(this.targetEnvironment)
+        if (!confirmToDestroy) {
+          console.warn("❗️ Rollback cancelled.")
+          console.log()
+          process.exit(0)
+        }
+      }
 
       this.backupTerraformState(this.terraformDir)
 
@@ -100,7 +101,7 @@ export class Rollback {
       }
 
       // Run destroy based on selected type
-      await this.runDestroy(selectedDestroyType, this.force)
+      await this.runDestroy(destroyType, force)
 
       this.removeBackupTerraformState(this.terraformDir)
     } catch (error) {
@@ -280,7 +281,9 @@ export class Rollback {
           const reBackupFormat = /terraform.tfstate.(\d+).backup/
           const match = reBackupFormat.exec(file)
           return (
-            file?.startsWith?.("terraform.tfstate") && file?.endsWith?.(".backup") && match?.length > 1
+            file?.startsWith?.("terraform.tfstate") &&
+            file?.endsWith?.(".backup") &&
+            match?.length > 1
           )
         })
         ?.sort((a, b) => b?.localeCompare(a))
@@ -305,7 +308,9 @@ export class Rollback {
           const reBackupFormat = /terraform.tfstate.(\d+).backup/
           const match = reBackupFormat.exec(file)
           return (
-            file?.startsWith?.("terraform.tfstate") && file?.endsWith?.(".backup") && match?.length > 1
+            file?.startsWith?.("terraform.tfstate") &&
+            file?.endsWith?.(".backup") &&
+            match?.length > 1
           )
         })
         ?.sort((a, b) => b?.localeCompare(a))

@@ -114,7 +114,9 @@ program
     const doForce = args?.force === true
     try {
       if (doForce && ObjectType.isEmpty(targetEnvironment) && ObjectType.isEmpty(destroyOptions)) {
-        throw new Error("Force option requires target environment and destroy options to be provided.")
+        throw new Error(
+          "Force option requires target environment and destroy options to be provided.",
+        )
       }
 
       // Run the rollback command

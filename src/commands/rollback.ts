@@ -1,5 +1,6 @@
 import { Rollback } from "../services/rollback"
 import { ValidateEnvironment } from "../services/validate"
+import { ObjectType } from "../utils/object"
 import { handleError } from "../utils/error.handler"
 import { ShellPrompts } from "./../utils/shell.prompts"
 import { Validation } from "./../utils/validation"
@@ -21,8 +22,15 @@ export async function run(
 
     console.info(`🌥️ Target environment: ${targetEnvironment}\n`)
 
+    if (force && ObjectType.isEmpty(targetEnvironment) && ObjectType.isEmpty(destroyType)) {
+      throw new Error(
+        "Force option requires target environment and destroy options to be provided.",
+      )
+    }
+
     // If the target environment is not provided as a command-line argument, prompt the user to enter it.
-    // NOTE: This uses the prompts library to interactively ask the user for the target environment.  It validates the input to ensure it's either 'staging' or 'production'.
+    // NOTE: This uses the prompts library to interactively ask the user for the target environment.
+    // It validates the input to ensure it's either 'staging' or 'production'.
     if (!targetEnvironment) {
       if (!force) {
         console.error("Target environment is required.")
@@ -44,7 +52,8 @@ export async function run(
     }
 
     // If the deployment type is not provided, prompt the user to select one.
-    // NOTE: This uses a select prompt to allow the user to choose between 'single' and 'asg' deployment types.  It also provides an 'exit' option to cancel the initialization.
+    // NOTE: This uses a select prompt to allow the user to choose between 'single' and 'asg' deployment types.
+    // It also provides an 'exit' option to cancel the initialization.
     if (!destroyType) {
       destroyType = await ShellPrompts.selectDestroyType()
     }
@@ -52,8 +61,8 @@ export async function run(
     console.info(`🚀 Starting rollback...`)
     console.info(`👁️ ${process.cwd()}`)
 
-    const rollback = new Rollback(targetEnvironment, destroyType as DestroyType, force)
-    await rollback.run()
+    const rollback = new Rollback(targetEnvironment)
+    await rollback.run(destroyType as DestroyType, force)
   } catch (error) {
     if (error instanceof Error) {
       switch (error.name) {
