@@ -7,6 +7,9 @@ import { ObjectType } from "./object"
 export class ShellPrompts {
   static readonly projectRoot: string = process.cwd()
 
+  // promptForTargetEnvironment prompts the user to enter a target environment.
+  // NOTE: When target environment is not provided, it prompts the user to enter one.
+  // It validates the input to ensure it's either 'staging' or 'production'.
   static async promptForTargetEnvironment(
     targetEnvironment: string | undefined,
   ): Promise<string | undefined> {
@@ -31,8 +34,53 @@ export class ShellPrompts {
     return targetEnvironment
   }
 
+  // promptForProjectName prompts the user to enter a project name.
+  // NOTE: When project name is not provided, it prompts the user to enter one.
+  static async promptForProjectName(projectName: string | undefined): Promise<string | undefined> {
+    if (ObjectType.isEmpty(projectName)) {
+      const response = await prompts({
+        type: "text",
+        name: "projectName",
+        message: "Enter project name:",
+        validate: (value) => (value.length > 0 ? true : "Please enter a valid project name"),
+      })
+
+      if (ObjectType.isEmpty(response.projectName)) {
+        console.error("Project name is required.")
+        process.exit(1)
+      }
+
+      projectName = response.projectName
+    }
+    return projectName
+  }
+
+  // promptConfirmToDeploy prompts the user to confirm deployment.
+  // NOTE: Prompt to confirm deployment (Y/N).
+  static async promptConfirmToDeploy(projectName: string): Promise<boolean> {
+    const response = await prompts({
+      type: "confirm",
+      name: "confirmDeployment",
+      message: `Are you sure you want to deploy ${projectName}?`,
+      initial: false,
+    })
+    return response.confirmDeployment
+  }
+
+  // promptConfirmToDestroy prompts the user to confirm destroy.
+  // NOTE: Prompt to confirm destroy (Y/N).
+  static async promptConfirmToDestroy(projectName: string): Promise<boolean> {
+    const response = await prompts({
+      type: "confirm",
+      name: "confirmDestroy",
+      message: `Are you sure you want to destroy ${projectName}?`,
+      initial: false,
+    })
+    return response.confirmDestroy
+  }
+
   // selectTargetEnvironment prompts the user to select a target environment from available options.
-  // NOTE: It uses the prompts library to create an interactive selection menu. Interacts with the user.
+  // NOTE: Prompt to select existing target environment or exit.
   static async selectTargetEnvironment(): Promise<string> {
     const response = await prompts({
       type: "select",
@@ -56,7 +104,7 @@ export class ShellPrompts {
   }
 
   // selectDeploymentType prompts the user to select a deployment type (single or asg).
-  // NOTE: It uses the prompts library to create an interactive selection menu. Interacts with the user.
+  // NOTE: Prompt to select existing deployment type or exit.
   static async selectDeploymentType(
     deploymentType: DeploymentType | string | undefined,
   ): Promise<DeploymentType | undefined> {
@@ -84,7 +132,7 @@ export class ShellPrompts {
   }
 
   // selectDestroyType prompts the user to select a destroy type (full or partial).
-  // NOTE: It uses the prompts library to create an interactive selection menu. Interacts with the user.
+  // NOTE: Prompt to select destroying method or exit.
   static async selectDestroyType(): Promise<DestroyType> {
     const response = await prompts({
       type: "select",
