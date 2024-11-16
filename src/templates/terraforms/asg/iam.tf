@@ -80,7 +80,8 @@ resource "aws_iam_instance_profile" "ec2_profile" {
 #   role       = aws_iam_role.ec2_role.name
 # }
 
-resource "aws_iam_role_policy_attachment" "ec2_policy" {
+# Attach EC2 Container Service role policy
+resource "aws_iam_role_policy_attachment" "ec2_container_service_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
   role       = aws_iam_role.ec2_role.name
 }
@@ -101,12 +102,14 @@ resource "aws_iam_role_policy" "s3_access" {
       {
         Effect = "Allow"
         Action = [
-          "s3:GetObject",
-          "s3:ListBucket"
+          "s3:Get*",
+          "s3:List*"
         ]
         Resource = [
           "${aws_s3_bucket.artifacts.arn}",
-          "${aws_s3_bucket.artifacts.arn}/*"
+          "${aws_s3_bucket.artifacts.arn}/*",
+          "arn:aws:s3:::aws-codedeploy-*/*",
+          "arn:aws:s3:::aws-codedeploy-*"
         ]
       },
       {
@@ -130,7 +133,21 @@ resource "aws_iam_role_policy" "s3_access" {
           "codedeploy-commands:*"
         ]
         Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ec2:DescribeInstances",
+          "ec2:DescribeTags"
+        ]
+        Resource = "*"
       }
     ]
   })
+}
+
+# Add AWS Systems Manager (SSM) access for EC2 instances
+resource "aws_iam_role_policy_attachment" "ec2_ssm_policy" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+  role       = aws_iam_role.ec2_role.name
 }
