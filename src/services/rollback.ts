@@ -317,17 +317,12 @@ export class Rollback {
       const stateFile = path.join(terraformDir, "terraform.tfstate")
 
       if (fs.existsSync(backupStateFile)) {
-        fs.createReadStream(backupStateFile)
-          .pipe(fs.createWriteStream(stateFile))
-          .on("finish", () => {
-            // Finally, delete the backup file
-            fs.unlinkSync(backupStateFile)
-            console.log("✅ Terraform state restored from backup file")
-          })
-          .on("error", (err) => {
-            console.error("❌ Error restoring Terraform state from backup file:", err)
-            process.exit(1)
-          })
+        const contentBackupStateFile = fs.readFileSync(backupStateFile)
+        fs.writeFileSync(stateFile, contentBackupStateFile)
+        // Finally, delete the backup file
+        fs.unlinkSync(backupStateFile)
+        // this.removeBackupTerraformState(this.terraformDir)
+        console.log("✅ Terraform state restored from backup file")
       } else {
         console.error("❌ Backup file not found:", backupStateFile)
         process.exit(1)
