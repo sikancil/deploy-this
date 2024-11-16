@@ -61,7 +61,7 @@ export class ShellPrompts {
     const response = await prompts({
       type: "confirm",
       name: "confirmDeployment",
-      message: `Are you sure you want to deploy ${projectName}?`,
+      message: `Deployment will CREATE or UPDATES resources for ${projectName} within AWS. Proceed?`,
       initial: false,
     })
     return response.confirmDeployment
@@ -73,7 +73,7 @@ export class ShellPrompts {
     const response = await prompts({
       type: "confirm",
       name: "confirmDestroy",
-      message: `Are you sure you want to destroy ${projectName}?`,
+      message: `Rollback will DESTROY resources in ${projectName}. Proceed?`,
       initial: false,
     })
     return response.confirmDestroy
