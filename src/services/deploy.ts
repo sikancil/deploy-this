@@ -256,6 +256,7 @@ export class Deploy {
       console.info("Executing Terraform init...") // NOTE: Added more descriptive message.
       const command = /* tfVars.join(" ").concat(" ") + */ `terraform init`
       execSync(command, { stdio: "inherit" })
+      console.log()
     } catch (error) {
       if (error instanceof Error) {
         console.error("❗️ Error initializing Terraform:", (error as Error).message)

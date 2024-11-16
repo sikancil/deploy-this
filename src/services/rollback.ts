@@ -117,6 +117,7 @@ export class Rollback {
     try {
       console.info("Initializing Terraform...")
       execSync("terraform init", { stdio: "inherit" })
+      console.log()
     } catch (error) {
       throw new Error(`Terraform initialization failed: ${error}`)
     }
@@ -130,15 +131,6 @@ export class Rollback {
       console.info(`Running ${destroyType} destroy...`)
 
       let destroyResult: Buffer
-
-      if (!force) {
-        const confirmToDestroy = await ShellPrompts.promptConfirmToDestroy(this.targetEnvironment)
-        if (!confirmToDestroy) {
-          console.warn("❗️ Rollback cancelled.")
-          console.log()
-          process.exit(0)
-        }
-      }
 
       if (destroyType === "partial") {
         // Destroy resources in reverse dependency order
