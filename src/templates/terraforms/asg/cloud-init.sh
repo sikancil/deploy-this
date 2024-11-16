@@ -134,6 +134,46 @@ chown -R $STD_USER:$STD_USER /home/$STD_USER
 chmod 600 /home/$STD_USER/.env.vm
 chmod 600 /root/.aws/credentials
 
+# Configure AWS CLI for standard user
+log "Configuring AWS CLI for $STD_USER"
+mkdir -p /home/$STD_USER/.aws
+# Configure default profile
+cat << EOF > /home/$STD_USER/.aws/credentials
+[default]
+aws_access_key_id = ${aws_access_key}
+aws_secret_access_key = ${aws_secret_key}
+
+[${aws_profile}]
+aws_access_key_id = ${aws_access_key}
+aws_secret_access_key = ${aws_secret_key}
+EOF
+
+cat << EOF > /home/$STD_USER/.aws/config
+[default]
+region = ${aws_region}
+output = json
+
+[profile ${aws_profile}]
+region = ${aws_region}
+output = json
+EOF
+
+# Set proper ownership and permissions for AWS config
+chown -R $STD_USER:$STD_USER /home/$STD_USER/.aws
+chmod 600 /home/$STD_USER/.aws/credentials
+chmod 600 /home/$STD_USER/.aws/config
+
+# Verify AWS account access
+log "Verifying AWS account access"
+su - $STD_USER -c "aws sts get-caller-identity --profile ${aws_profile}"
+
+# Ensure CodeDeploy agent is accessible by standard user
+log "Setting up CodeDeploy agent access for $STD_USER"
+mkdir -p /home/$STD_USER/.codedeploy
+cp -r /root/.codedeploy/* /home/$STD_USER/.codedeploy/ 2>/dev/null || true
+chown -R $STD_USER:$STD_USER /home/$STD_USER/.codedeploy
+chmod 700 /home/$STD_USER/.codedeploy
+
 # Setup temporary health check endpoint
 log "Setting up temporary health check endpoint"
 mkdir -p /var/www/html/health/

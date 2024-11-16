@@ -1,10 +1,13 @@
 # S3 bucket for storing Docker Compose and deployment artifacts
 resource "aws_s3_bucket" "artifacts" {
-  bucket = "${var.project_name}-artifacts"
+  # bucket        = "${var.project_name}-artifacts-${var.aws_region}"
+  bucket        = "${var.project_name}-artifacts"
+  force_destroy = true
 
   tags = merge(
     var.common_tags,
     {
+      # Name = "${var.project_name}-artifacts-${var.aws_region}"
       Name = "${var.project_name}-artifacts"
     }
   )

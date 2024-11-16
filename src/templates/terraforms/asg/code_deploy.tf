@@ -7,7 +7,7 @@ resource "aws_codedeploy_deployment_group" "app_dg" {
   # app_name               = var.codedeploy_app_name
   app_name               = aws_codedeploy_app.app.name
   
-  # deployment_group_name  = var.codedeploy_group_name
+  #deployment_group_name  = "${var.project_name}-cd-dg-${var.aws_region}"
   deployment_group_name  = "${var.project_name}-cd-dg"
   service_role_arn       = aws_iam_role.codedeploy_role.arn
   deployment_config_name = "CodeDeployDefault.OneAtATime"
