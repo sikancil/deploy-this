@@ -96,7 +96,7 @@ export class Init {
     if (fs.existsSync(terraformDir)) {
       const files = fs.readdirSync(terraformDir)
       const hasTerraformFiles = files.some((file) =>
-        [".tf", ".yml", ".sh", ".md"].some((ext) => file.endsWith(ext)),
+        [".json", ".tf", ".yml", ".sh", ".md"].some((ext) => file.endsWith(ext)),
       )
 
       if (hasTerraformFiles && !force) {
@@ -119,6 +119,7 @@ export class Init {
     // Remove existing Terraform files
     fs.readdirSync(terraformDir).forEach((file) => {
       if (
+        file.endsWith(".json") ||
         file.endsWith(".tf") ||
         file.endsWith(".yml") ||
         file.endsWith(".sh") ||
@@ -137,6 +138,7 @@ export class Init {
     const files = fs.readdirSync(templateDir)
     for (const file of files) {
       if (
+        file.endsWith(".json") ||
         file.endsWith(".tf") ||
         file.endsWith(".yml") ||
         file.endsWith(".sh") ||

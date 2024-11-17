@@ -1,19 +1,21 @@
-# IAM role for EC2 instances
+# IAM role for EC2 instances with versioning
 resource "aws_iam_role" "ec2_role" {
-  name = "${var.project_name}-ec2-role"
+  name_prefix = "${var.project_name}-ec2-"
+  description = "IAM role for EC2 instances in ${var.project_name}"
+  
+  assume_role_policy = file("${path.module}/iam_roles.json")
+  
+  tags = merge(
+    var.common_tags,
+    {
+      Name = "${var.project_name}-ec2-role"
+      Service = "EC2"
+    }
+  )
 
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
-        Principal = {
-          Service = "ec2.amazonaws.com"
-        }
-      }
-    ]
-  })
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 # IAM role for CodeDeploy
