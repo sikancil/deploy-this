@@ -44,6 +44,134 @@ resource "aws_iam_role" "codedeploy_role" {
   )
 }
 
+# Update EC2 instance permissions
+resource "aws_iam_role_policy" "ec2_permissions" {
+  name = "${var.project_name}-ec2-permissions"
+  role = aws_iam_role.ec2_role.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      # Existing S3 permissions
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:Get*",
+          "s3:List*"
+        ]
+        Resource = [
+          "${aws_s3_bucket.artifacts.arn}",
+          "${aws_s3_bucket.artifacts.arn}/*",
+          "arn:aws:s3:::aws-codedeploy-*/*",
+          "arn:aws:s3:::aws-codedeploy-*"
+        ]
+      },
+      # Load Balancer permissions
+      {
+        Effect = "Allow"
+        Action = [
+          "elasticloadbalancing:Describe*",
+          "elasticloadbalancing:DeregisterInstancesFromLoadBalancer",
+          "elasticloadbalancing:RegisterInstancesWithLoadBalancer",
+          "elasticloadbalancing:RegisterTargets",
+          "elasticloadbalancing:DeregisterTargets"
+        ]
+        Resource = "*"
+      },
+      # Enhanced Auto Scaling permissions
+      {
+        Effect = "Allow"
+        Action = [
+          "autoscaling:Describe*",
+          "autoscaling:UpdateAutoScalingGroup",
+          "autoscaling:CompleteLifecycleAction",
+          "autoscaling:PutLifecycleHook",
+          "autoscaling:RecordLifecycleActionHeartbeat",
+          "autoscaling:DeleteLifecycleHook"
+        ]
+        Resource = "*"
+      },
+      # Existing CodeDeploy permissions
+      {
+        Effect = "Allow"
+        Action = [
+          "codedeploy:*",
+          "codedeploy-commands:*"
+        ]
+        Resource = "*"
+      },
+      # EC2 permissions
+      {
+        Effect = "Allow"
+        Action = [
+          "ec2:DescribeInstances",
+          "ec2:DescribeTags",
+          "ec2:DescribeInstanceStatus"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+# Update CodeDeploy role permissions
+resource "aws_iam_role_policy" "codedeploy_permissions" {
+  name = "${var.project_name}-codedeploy-permissions"
+  role = aws_iam_role.codedeploy_role.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "elasticloadbalancing:*",
+          "autoscaling:*",
+          "ec2:DescribeInstances",
+          "ec2:DescribeInstanceStatus",
+          "ec2:DescribeInstanceAttribute",
+          "ec2:DescribeAddresses",
+          "ec2:DescribeSubnets",
+          "ec2:DescribeSecurityGroups",
+          "ec2:DescribeNetworkInterfaces"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "sns:Publish"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+# Add CloudWatch Logs permissions for debugging
+resource "aws_iam_role_policy" "codedeploy_logs" {
+  name = "${var.project_name}-codedeploy-logs"
+  role = aws_iam_role.codedeploy_role.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:DescribeLogStreams"
+        ]
+        Resource = [
+          "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws/codedeploy/*"
+        ]
+      }
+    ]
+  })
+}
+
 resource "aws_iam_instance_profile" "ec2_profile" {
   name = "${var.project_name}-ec2-profile"
   role = aws_iam_role.ec2_role.name
