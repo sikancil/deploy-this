@@ -34,6 +34,14 @@ resource "aws_iam_role" "codedeploy_role" {
       }
     ]
   })
+
+  tags = merge(
+    var.common_tags,
+    {
+      Name = "${var.project_name}-codedeploy-role"
+      Service = "CodeDeploy"
+    }
+  )
 }
 
 resource "aws_iam_instance_profile" "ec2_profile" {
@@ -64,10 +72,10 @@ resource "aws_iam_role_policy_attachment" "codedeploy_service_role" {
   role       = aws_iam_role.codedeploy_role.name
 }
 
-resource "aws_iam_role_policy_attachment" "codedeploy_agent_policy" {
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole"
-  role       = aws_iam_role.ec2_role.name
-}
+# resource "aws_iam_role_policy_attachment" "codedeploy_agent_policy" {
+#   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole"
+#   role       = aws_iam_role.ec2_role.name
+# }
 
 # Add AWS Systems Manager (SSM) access for EC2 instances
 resource "aws_iam_role_policy_attachment" "ec2_ssm_policy" {
@@ -75,9 +83,31 @@ resource "aws_iam_role_policy_attachment" "ec2_ssm_policy" {
   role       = aws_iam_role.ec2_role.name
 }
 
-# Add S3 access policy for EC2 instances
-resource "aws_iam_role_policy" "s3_access" {
-  name = "${var.project_name}-s3-access"
+# Add SNS permissions for CodeDeploy
+resource "aws_iam_role_policy" "codedeploy_sns_policy" {
+  name = "${var.project_name}-codedeploy-sns"
+  role = aws_iam_role.codedeploy_role.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "sns:Publish",
+          "sns:ListTopics",
+          "sns:GetTopicAttributes",
+          "autoscaling:Describe*"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+# Comprehensive EC2 instance permissions
+resource "aws_iam_role_policy" "ec2_permissions" {
+  name = "${var.project_name}-ec2-permissions"
   role = aws_iam_role.ec2_role.name
 
   policy = jsonencode({
@@ -122,10 +152,17 @@ resource "aws_iam_role_policy" "s3_access" {
         Effect = "Allow"
         Action = [
           "ec2:DescribeInstances",
-          "ec2:DescribeTags"
+          "ec2:DescribeTags",
+          "autoscaling:Describe*",
+          "autoscaling:UpdateAutoScalingGroup",
+          "autoscaling:CompleteLifecycleAction"
         ]
         Resource = "*"
       }
     ]
   })
 }
+
+# Get current AWS region and account ID for reference
+data "aws_region" "current" {}
+data "aws_caller_identity" "current" {}
