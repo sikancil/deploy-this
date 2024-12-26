@@ -77,14 +77,6 @@ unzip awscliv2.zip
 ./aws/install
 rm -rf aws awscliv2.zip
 
-# Install CodeDeploy agent
-log "Installing CodeDeploy agent"
-apt-get install -y ruby-full
-cd /home/$STD_USER
-wget https://aws-codedeploy-${aws_region}.s3.amazonaws.com/latest/install
-chmod +x ./install
-./install auto
-
 # Configure AWS credentials and region
 log "Configuring AWS credentials"
 mkdir -p /root/.aws
@@ -115,10 +107,6 @@ AWS_ACCESS_KEY=${aws_access_key}
 AWS_SECRET_KEY=${aws_secret_key}
 
 ECR_REGISTRY_URL=${aws_account_id}.dkr.ecr.${aws_region}.amazonaws.com/${project_name}
-
-CODEDEPLOY_APP_NAME=${project_name}-cd
-CODEDEPLOY_GROUP_NAME=${project_name}-cd-dg
-CODEDEPLOY_S3_BUCKET=${project_name}-artifacts
 
 BITBUCKET_USERNAME=${bitbucket_username}
 BITBUCKET_APP_PASSWORD=${bitbucket_app_password}
@@ -166,13 +154,6 @@ chmod 600 /home/$STD_USER/.aws/config
 # Verify AWS account access
 log "Verifying AWS account access"
 su - $STD_USER -c "aws sts get-caller-identity --profile ${aws_profile}"
-
-# Ensure CodeDeploy agent is accessible by standard user
-log "Setting up CodeDeploy agent access for $STD_USER"
-mkdir -p /home/$STD_USER/.codedeploy
-cp -r /root/.codedeploy/* /home/$STD_USER/.codedeploy/ 2>/dev/null || true
-chown -R $STD_USER:$STD_USER /home/$STD_USER/.codedeploy
-chmod 700 /home/$STD_USER/.codedeploy
 
 # Setup temporary health check endpoint
 log "Setting up temporary health check endpoint"

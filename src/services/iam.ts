@@ -237,7 +237,6 @@ export class IAMService {
       "arn:aws:iam::aws:policy/AmazonS3FullAccess",
       "arn:aws:iam::aws:policy/AmazonRDSFullAccess",
       "arn:aws:iam::aws:policy/ElasticLoadBalancingFullAccess",
-      "arn:aws:iam::aws:policy/AWSCodeDeployFullAccess",
       "arn:aws:iam::aws:policy/AmazonECS_FullAccess",
       "arn:aws:iam::aws:policy/CloudWatchFullAccess",
     ]

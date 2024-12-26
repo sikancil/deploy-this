@@ -36,33 +36,6 @@ pipelines:
                 AWS_DEFAULT_REGION: $AWS_REGION
                 IMAGE_NAME: $IMAGE_NAME
                 IMAGE_TAG: $IMAGE_TAG
-      - step:
-          name: Deploy with CodeDeploy
-          script:
-            - pipe: atlassian/aws-code-deploy:0.3.4
-              variables:
-                AWS_DEFAULT_REGION: $AWS_REGION
-                AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
-                AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
-                # APPLICATION_NAME: $CODEDEPLOY_APP_NAME
-                # DEPLOYMENT_GROUP: $CODEDEPLOY_GROUP_NAME
-                # S3_BUCKET: $CODEDEPLOY_S3_BUCKET
-                APPLICATION_NAME: "${PROJECT_NAME}-cd"
-                DEPLOYMENT_GROUP: "${PROJECT_NAME}-cd-dg"
-                S3_BUCKET: "${PROJECT_NAME}-artifacts"
-                COMMAND: 'deploy'
-                VERSION_LABEL: $BITBUCKET_BUILD_NUMBER
-                WAIT: 'true'
-                FILE_EXISTS_BEHAVIOR: 'OVERWRITE'
-                IGNORE_APPLICATION_STOP_FAILURES: 'true'
-            - pipe: atlassian/aws-ecr-cleanup:1.0.0
-              variables:
-                AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
-                AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
-                AWS_DEFAULT_REGION: $AWS_REGION
-                IMAGE_NAME: $IMAGE_NAME
-                KEEP_IMAGES: "3"
-
   tags:
     v*:
       - step: *build-test
@@ -81,22 +54,3 @@ pipelines:
                 AWS_DEFAULT_REGION: $AWS_REGION
                 IMAGE_NAME: $IMAGE_NAME
                 IMAGE_TAG: $IMAGE_TAG
-      - step:
-          name: Deploy Release with CodeDeploy
-          script:
-            - pipe: atlassian/aws-code-deploy:0.3.4
-              variables:
-                AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
-                AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
-                AWS_DEFAULT_REGION: $AWS_REGION
-                # APPLICATION_NAME: $CODEDEPLOY_APP_NAME
-                # DEPLOYMENT_GROUP: $CODEDEPLOY_GROUP_NAME
-                # S3_BUCKET: $CODEDEPLOY_S3_BUCKET
-                APPLICATION_NAME: "${PROJECT_NAME}-cd"
-                DEPLOYMENT_GROUP: "${PROJECT_NAME}-cd-dg"
-                S3_BUCKET: "${PROJECT_NAME}-artifacts"
-                COMMAND: 'deploy'
-                VERSION_LABEL: $BITBUCKET_TAG
-                WAIT: 'true'
-                FILE_EXISTS_BEHAVIOR: 'OVERWRITE'
-                IGNORE_APPLICATION_STOP_FAILURES: 'true'

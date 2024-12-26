@@ -52,12 +52,6 @@ resource "aws_launch_template" "app" {
       bitbucket_workspace    = var.bitbucket_workspace
       bitbucket_branch       = var.bitbucket_branch
     }
-    
-    # codedeploy_app_name    = var.codedeploy_app_name
-    # codedeploy_group_name  = var.codedeploy_group_name
-    # codedeploy_s3_bucket   = var.codedeploy_s3_bucket
-    # ecr_registry           = var.ecr_registry
-    # ecr_repository_name    = var.ecr_repository_name
   ))
 
   tag_specifications {

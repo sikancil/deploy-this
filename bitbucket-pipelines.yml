@@ -30,7 +30,7 @@ pipelines:
     master:
       - step: *build-app
       - step:
-          name: Build Image then Push to ECR then Trigger CodeDeploy
+          name: Build Image then Push to ECR
           deployment: Staging
           services:
             - docker
@@ -91,13 +91,6 @@ pipelines:
             - docker push ${IMAGE_NAME}:${IMAGE_TAG}
             - docker push ${IMAGE_NAME}:latest
 
-            # Trigger CodeDeploy application
-            - |
-              echo "Triggering CodeDeploy application..."
-              if ! aws deploy get-application --application-name "${PROJECT_NAME}-cd" --profile ${AWS_PROFILE}; then
-                echo "Creating CodeDeploy application ${PROJECT_NAME}-cd"
-                aws deploy create-application --application-name "${PROJECT_NAME}-cd" --profile ${AWS_PROFILE}
-              fi
 
             # Prepare deployment package
             - |
@@ -154,66 +147,6 @@ pipelines:
             - aws s3 cp deploy.zip "s3://${PROJECT_NAME}-artifacts/${BITBUCKET_COMMIT}/deploy.zip" --profile ${AWS_PROFILE}
             
             # Create and monitor deployment
-            - |
-              # Create deployment
-              echo "Creating deployment..."
-              DEPLOYMENT_ID=$(aws deploy create-deployment \
-                --application-name "${PROJECT_NAME}-cd" \
-                --deployment-group-name "${PROJECT_NAME}-cd-dg" \
-                --s3-location bucket="${PROJECT_NAME}-artifacts",key="${BITBUCKET_COMMIT}/deploy.zip",bundleType=zip \
-                --deployment-config-name CodeDeployDefault.OneAtATime \
-                --description "Deploying commit ${BITBUCKET_COMMIT:0:7}" \
-                --output text \
-                --query 'deploymentId' \
-                --profile "${AWS_PROFILE}") || {
-                  echo "Failed to create deployment"
-                  exit 1
-                }
-              
-              echo "Deployment ID: ${DEPLOYMENT_ID}"
-              
-              # Create deployment group if it doesn't exist
-              echo "Checking deployment group..."
-              if ! aws deploy get-deployment-group \
-                --application-name "${PROJECT_NAME}-cd" \
-                --deployment-group-name "${PROJECT_NAME}-cd-dg" \
-                --profile "${AWS_PROFILE}" &>/dev/null; then
-                echo "Creating deployment group ${PROJECT_NAME}-cd-dg"
-                aws deploy create-deployment-group \
-                  --application-name "${PROJECT_NAME}-cd" \
-                  --deployment-group-name "${PROJECT_NAME}-cd-dg" \
-                  --service-role-arn "${AWS_CODEDEPLOY_SERVICE_ROLE}" \
-                  --deployment-style deploymentType=IN_PLACE,deploymentOption=WITH_TRAFFIC_CONTROL \
-                  --ec2-tag-set "Key=Environment,Value=staging" \
-                  --profile "${AWS_PROFILE}"
-              fi
-
-              # Monitor deployment status
-              echo "Monitoring deployment status..."
-              while true; do
-                STATUS=$(aws deploy get-deployment \
-                  --deployment-id "${DEPLOYMENT_ID}" \
-                  --profile "${AWS_PROFILE}" \
-                  --query 'deploymentInfo.status' \
-                  --output text)
-                
-                echo "Deployment status: ${STATUS}"
-                
-                case ${STATUS} in
-                  "Succeeded")
-                    echo "Deployment completed successfully"
-                    break
-                    ;;
-                  "Failed"|"Stopped"|"Error")
-                    echo "Deployment failed with status: ${STATUS}"
-                    aws deploy get-deployment --deployment-id ${DEPLOYMENT_ID} --profile ${AWS_PROFILE}
-                    exit 1
-                    ;;
-                  *)
-                    sleep 30
-                    ;;
-                esac
-              done
             # Cleanup old ECR images
             - |
               # Get all image tags except the latest 3
