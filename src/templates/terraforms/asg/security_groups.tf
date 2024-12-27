@@ -81,14 +81,6 @@ resource "aws_security_group" "ec2" {
     cidr_blocks = ["0.0.0.0/0"]
   }
   
-  # codedeploy_https
-  egress {
-    from_port         = 443
-    to_port           = 443
-    protocol          = "tcp"
-    cidr_blocks       = ["0.0.0.0/0"]
-  }
-  
   # s3_endpoint
   egress {
     from_port         = 443

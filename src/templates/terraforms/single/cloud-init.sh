@@ -54,13 +54,6 @@ curl "https://s3.amazonaws.com/aws-cli/awscli-bundle.zip" -o "awscli-bundle.zip"
 unzip awscli-bundle.zip
 ./awscli-bundle/install -i /usr/local/aws -b /usr/local/bin/aws
 
-# Install CodeDeploy agent
-log "Installing CodeDeploy agent"
-# cd /home/ubuntu
-wget https://aws-codedeploy-${aws_region}.s3.amazonaws.com/latest/install
-chmod +x ./install
-./install auto
-
 log "Installing CloudWatch agent"
 wget https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb
 dpkg -i -E ./amazon-cloudwatch-agent.deb

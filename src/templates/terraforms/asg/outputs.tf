@@ -110,16 +110,6 @@ output "ec2_role_arn" {
   value       = aws_iam_role.ec2_role.arn
 }
 
-output "codedeploy_role_name" {
-  description = "The name of the CodeDeploy IAM role"
-  value       = aws_iam_role.codedeploy_role.name
-}
-
-output "codedeploy_role_arn" {
-  description = "The ARN of the CodeDeploy IAM role"
-  value       = aws_iam_role.codedeploy_role.arn
-}
-
 # EC2 Key Pair outputs
 output "key_pair_name" {
   description = "The name of the key pair"
@@ -145,27 +135,6 @@ output "ecr_repository_url" {
 output "ecr_repository_arn" {
   description = "The ARN of the ECR repository"
   value       = aws_ecr_repository.app_repo.arn
-}
-
-# CodeDeploy outputs
-output "codedeploy_app_name" {
-  description = "The name of the CodeDeploy application"
-  value       = aws_codedeploy_app.app.name
-}
-
-output "codedeploy_app_id" {
-  description = "The ID of the CodeDeploy application"
-  value       = aws_codedeploy_app.app.id
-}
-
-output "codedeploy_deployment_group_name" {
-  description = "The name of the CodeDeploy deployment group"
-  value       = aws_codedeploy_deployment_group.app_dg.deployment_group_name
-}
-
-output "codedeploy_deployment_group_id" {
-  description = "The ID of the CodeDeploy deployment group"
-  value       = aws_codedeploy_deployment_group.app_dg.id
 }
 
 # S3 outputs

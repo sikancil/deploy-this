@@ -149,8 +149,6 @@ export class Rollback {
           "aws_launch_template.app",
           // Third layer - Monitoring and Deployment resources
           "aws_cloudwatch_metric_alarm.high_cpu",
-          "aws_codedeploy_deployment_group.app_dg",
-          "aws_codedeploy_app.app",
           "aws_ssm_parameter.current_instance_type",
           // Fourth layer - Container and Storage resources
           "aws_ecr_repository.app_repo",
@@ -160,21 +158,12 @@ export class Rollback {
           "aws_s3_object.docker_compose",
           "aws_s3_bucket.artifacts",
           // Fifth layer - IAM resources
-          "aws_iam_role_policy.s3_access",
-          "aws_iam_role_policy_attachment.codedeploy_policy",
-          "aws_iam_role_policy_attachment.codedeploy_agent_policy",
-          "aws_iam_role_policy_attachment.ec2_policy",
-          "aws_iam_instance_profile.ec2_profile",
-          "aws_iam_role.codedeploy_role",
-          "aws_iam_role.ec2_role",
           // Sixth layer - Security and Access resources
-          "aws_security_group_rule.codedeploy_https",
           "aws_security_group_rule.s3_endpoint",
           "aws_security_group.vpc_endpoint",
           "aws_security_group.ec2",
           "aws_security_group.alb",
           // Seventh layer - VPC Endpoint resources
-          "aws_vpc_endpoint.codedeploy",
           "aws_vpc_endpoint.ecr_api",
           "aws_vpc_endpoint.ecr_dkr",
           "aws_vpc_endpoint.logs",

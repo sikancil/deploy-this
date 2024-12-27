@@ -78,21 +78,6 @@ variable "igw_id" {
 #   type        = string
 # }
 
-# variable "codedeploy_app_name" {
-#   description = "The name of the CodeDeploy application"
-#   type        = string
-# }
-
-# variable "codedeploy_group_name" {
-#   description = "The name of the CodeDeploy deployment group"
-#   type        = string
-# }
-
-# variable "codedeploy_s3_bucket" {
-#   description = "The name of the CodeDeploy S3 bucket"
-#   type        = string
-# }
-
 variable "ami_id" {
   description = "The AMI ID to use for the EC2 instance (Ubuntu x64 22.04 LTS)"
   type        = string

@@ -276,10 +276,6 @@ export class ValidateEnvironment {
       // ECR_REGISTRY: (value: string) => /^[0-9]{12}.dkr.ecr.[a-z]{2}-[a-z]+-\d+.amazonaws.com$/.test(value),
       // ECR_REPOSITORY_NAME: (value: string) => value.length > 0,
 
-      // CODEDEPLOY_APP_NAME: (value: string) => value.length > 0,
-      // CODEDEPLOY_GROUP_NAME: (value: string) => value.length > 0,
-      // CODEDEPLOY_S3_BUCKET: (value: string) => value.length > 0,
-
       BITBUCKET_USERNAME: (value: string) => value.length > 0,
       BITBUCKET_APP_PASSWORD: (value: string) => value.length > 0,
       BITBUCKET_WORKSPACE: (value: string) => value.length > 0,

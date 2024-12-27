@@ -86,20 +86,6 @@ resource "aws_vpc_endpoint" "ecr_dkr" {
   }
 }
 
-# Add VPC Endpoint for CodeDeploy
-resource "aws_vpc_endpoint" "codedeploy" {
-  vpc_id              = aws_vpc.VPC.id
-  service_name        = "com.amazonaws.${var.aws_region}.codedeploy"
-  vpc_endpoint_type   = "Interface"
-  subnet_ids          = aws_subnet.public[*].id
-  security_group_ids  = [aws_security_group.vpc_endpoint.id]
-  private_dns_enabled = true
-
-  tags = {
-    Name = "${var.project_name}-codedeploy-endpoint"
-  }
-}
-
 # Add VPC Endpoint for CloudWatch Logs
 resource "aws_vpc_endpoint" "logs" {
   vpc_id              = aws_vpc.VPC.id
