@@ -157,8 +157,8 @@ su - $STD_USER -c "aws sts get-caller-identity --profile ${aws_profile}"
 
 # Setup temporary health check endpoint
 log "Setting up temporary health check endpoint"
-mkdir -p /var/www/html/health/
-cat << EOF > /var/www/html/health/index.html
+mkdir -p /var/www/html/lc/
+cat << EOF > /var/www/html/lc/index.html
 OK
 EOF
 
