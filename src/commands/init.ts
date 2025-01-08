@@ -51,6 +51,7 @@ export async function run(
       choices: [
         { title: "single", value: "single" },
         { title: "asg", value: "asg" },
+        { title: "ecs", value: "ecs" },
         { title: "exit", value: "exit" },
       ],
     })

@@ -59,7 +59,8 @@ export class Init {
     if (
       !ObjectType.isEmpty(deploymentType) &&
       (deploymentType as unknown as DeploymentType) !== DeploymentType.SINGLE &&
-      (deploymentType as unknown as DeploymentType) !== DeploymentType.ASG
+      (deploymentType as unknown as DeploymentType) !== DeploymentType.ASG &&
+      (deploymentType as unknown as DeploymentType) !== DeploymentType.ECS
     ) {
       console.error(`Invalid "deploymentType" value (${Object.values(DeploymentType).join(", ")})`)
       process.exit(1)

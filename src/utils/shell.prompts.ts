@@ -116,6 +116,7 @@ export class ShellPrompts {
         choices: [
           { title: "single", value: DeploymentType.SINGLE },
           { title: "asg", value: DeploymentType.ASG },
+          { title: "ecs", value: DeploymentType.ECS },
           { title: "exit", value: "exit" },
         ],
       })

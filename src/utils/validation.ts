@@ -124,7 +124,7 @@ export class Validation {
 
     const deploymentType = this.checkDeploymentType(NODE_ENV as string)
 
-    if (deploymentType === DeploymentType.ASG) {
+    if (deploymentType === DeploymentType.ASG || deploymentType === DeploymentType.ECS) {
       requiredDtEnvVars.push("SSL_CERTIFICATE_ARN")
     }
 

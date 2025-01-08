@@ -1,0 +1,52 @@
+pipelines:
+  branches:
+    main:
+      - step:
+          name: Build and Test
+          image: node:20
+          #deployment: staging
+          caches:
+            - node
+          script:
+            # Configure AWS Credentials
+            - npm install
+          artifacts:
+            - '**'
+      - step:
+          name: Login to ECR and Deploy.
+          image: python:3.7.4-alpine3.10
+          services:
+            - docker # Enable Docker for your repository
+          caches:
+            - pip
+          script:
+            # Install AWS CLI
+            - pip3 install awscli
+            # Install support packages
+            - apk add --no-cache openssh
+            # Configure AWS Credentials
+            - aws configure set aws_access_key_id "${AWS_ACCESS_KEY_ID}"
+            - aws configure set aws_secret_access_key "${AWS_SECRET_ACCESS_KEY}"
+            - aws configure set region "${AWS_REGION}"
+            # Login to AWS ECR
+            - aws ecr get-login-password --region "${AWS_REGION}" | docker login --username "${DOCKERHUB_AWS_USERNAME}" --password-stdin "${ECR_URL}"
+            # Build the docker image and push to ECR
+            - export IMAGE_NAME="${BASE_IMAGE_NAME}:${BITBUCKET_COMMIT}"
+            - docker build -t  $IMAGE_NAME .
+            - docker tag $IMAGE_NAME "${ECR_URL}/${BASE_IMAGE_NAME}:${BITBUCKET_COMMIT}"
+            - docker push "${ECR_URL}/${BASE_IMAGE_NAME}:${BITBUCKET_COMMIT}"
+            - |
+              TASK_DEFINITION=$(aws ecs register-task-definition \
+                            --family "${FAMILY_TASK}" \
+                            --execution-role-arn "${EXECUTION_ROLE_ARN}" \
+                            --task-role-arn "${EXECUTION_ROLE_ARN}" \
+                            --network-mode awsvpc \
+                            --requires-compatibilities FARGATE \
+                            --cpu 256 \
+                            --memory 512 \
+                            --container-definitions "[{\"name\":\"io-template-container\",\"image\":\"${ECR_URL}/${BASE_IMAGE_NAME}:${BITBUCKET_COMMIT}\",\"essential\":true,\"portMappings\":[{\"containerPort\":3000,\"hostPort\":3000}],\"environment\":[{\"name\":\"SERVICE_NAME\",\"value\":\"io_service\"},{\"name\":\"DB_CLIENT\",\"value\":\"mysql\"},{\"name\":\"DB_HOST\",\"value\":\"localhost\"},{\"name\":\"DB_PORT\",\"value\":\"3306\"},{\"name\":\"DB_DATABASE\",\"value\":\"test\"},{\"name\":\"DB_USER\",\"value\":\"root\"}]}]" \
+                            --query "taskDefinition.taskDefinitionArn" --output text)
+            - echo "Updating ECS service with new task definition..."
+            - aws ecs update-service --cluster stg-cluster --service "${IO_SERVICE}" --task-definition "$TASK_DEFINITION" --force-new-deployment --deployment-configuration minimumHealthyPercent=100,maximumPercent=200
+            - echo "Verifying ECS service deployment..."
+            - aws ecs describe-services --cluster stg-cluster --services "${IO_SERVICE}" --query "services[0].deployments"
