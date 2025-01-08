@@ -84,12 +84,12 @@ export class Init {
     await this.ensureTerraformDirectory(terraformDir, force)
     await this.generateTerraformFiles(terraformDir, templateDir, deploymentType as string)
 
-    await this.ensureTerraformDirectory(`${terraformDir}/scripts`, force)
-    await this.generateTerraformFiles(
-      `${terraformDir}/scripts`,
-      `${templateDir}/scripts`,
-      deploymentType as string,
-    )
+    // await this.ensureTerraformDirectory(`${terraformDir}/scripts`, force)
+    // await this.generateTerraformFiles(
+    //   `${terraformDir}/scripts`,
+    //   `${templateDir}/scripts`,
+    //   deploymentType as string,
+    // )
   }
 
   private async ensureTerraformDirectory(terraformDir: string, force: boolean): Promise<void> {

@@ -10,10 +10,6 @@ resource "aws_launch_template" "app" {
   instance_type = var.instance_types[0]  # Base instance type
   key_name      = aws_key_pair.dt_keypair.id
 
-  iam_instance_profile {
-    name = aws_iam_instance_profile.ec2_profile.name
-  }
-
   network_interfaces {
     # associate_public_ip_address = true
     associate_public_ip_address = var.map_public_ip

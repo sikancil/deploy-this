@@ -99,17 +99,6 @@ output "launch_template_latest_version" {
   value       = aws_launch_template.app.latest_version
 }
 
-# IAM outputs
-output "ec2_role_name" {
-  description = "The name of the EC2 IAM role"
-  value       = aws_iam_role.ec2_role.name
-}
-
-output "ec2_role_arn" {
-  description = "The ARN of the EC2 IAM role"
-  value       = aws_iam_role.ec2_role.arn
-}
-
 # EC2 Key Pair outputs
 output "key_pair_name" {
   description = "The name of the key pair"
