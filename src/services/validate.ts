@@ -7,6 +7,7 @@ import { satisfies, compare, CompareOperator } from "compare-versions"
 import { ObjectType } from "../utils/object"
 import { patchEnvs } from "../utils/env"
 import { Configuration } from "../utils/configuration"
+import {DeploymentType} from "../interfaces/common";
 
 // Promisify the exec function for asynchronous execution of shell commands.
 const execAsync = promisify(exec)
@@ -20,8 +21,8 @@ export class ValidateEnvironment {
     this.projectRoot = projectRoot || Configuration.projectRoot
   }
 
-  public async run(): Promise<{ stage: string | undefined }> {
-    const validResult = await this.validates(undefined, false)
+  public async run(deploymentType: DeploymentType): Promise<{ stage: string | undefined }> {
+    const validResult = await this.validates(deploymentType,undefined, false)
     if (ObjectType.isEmpty(validResult)) {
       throw new Error(
         `Checks failed!. Update configuration files, or use "init" command force option "init -f" to assist in creating environment files.`,
@@ -39,6 +40,7 @@ export class ValidateEnvironment {
   // It's the main entry point for environment validation and is called by src/index.ts.
   // It checks for .env, .env.dt.{environment} files, AWS credentials, and required tools.
   public async validates(
+    deploymentType: DeploymentType,
     targetStage: string | undefined = undefined,
     doForce: boolean = false,
   ): Promise<string | undefined> {
@@ -66,7 +68,7 @@ export class ValidateEnvironment {
 
     try {
       // Check for and create the .env.dt.{environment} file if it doesn't exist and doForce is true.
-      checkPoint.dtEnvFile = this.checkDtEnvFile(targetStage, doForce)
+      checkPoint.dtEnvFile = this.checkDtEnvFile(deploymentType, targetStage, doForce)
     } catch (error) {
       console.error("Error checking .env.dt.{environment} file:", error)
       checkPoint.dtEnvFile = false
@@ -74,7 +76,7 @@ export class ValidateEnvironment {
     console.info(`${checkPoint.dtEnvFile ? "✅ dt Configuration" : "❌ Invalid Configuration"}`)
 
     try {
-      checkPoint.awsCredentials = this.validateAwsCredentials(targetStage)
+      checkPoint.awsCredentials = this.validateAwsCredentials(deploymentType, targetStage)
     } catch (error) {
       console.error("Error validating AWS credentials:", error)
       checkPoint.awsCredentials = false
@@ -154,6 +156,7 @@ export class ValidateEnvironment {
   // NOTE: Checks if the .env.dt.{environment} file exists. If not and doForce is true, it creates one.
   // Uses checkTargetEnvironment to determine the environment.  Called by validateEnvironment.
   private checkDtEnvFile(
+    deploymentType: DeploymentType,
     targetStage: string | undefined = undefined,
     doForce: boolean = false,
   ): boolean {
@@ -177,7 +180,7 @@ export class ValidateEnvironment {
 
       const exampleDtEnvFile = path.join(
         __dirname,
-        "../templates/environments/.env.dt.stage-example",
+        `../templates/environments/${deploymentType}/.env.dt.stage-example`,
       )
       // Copy the example .env.dt.stage file.
       fs.copyFileSync(exampleDtEnvFile, targetDtEnvFile)
@@ -187,6 +190,7 @@ export class ValidateEnvironment {
 
   // NOTE: Validates AWS credentials from the .env.dt.{environment} file. Called by validateEnvironment.
   private validateAwsCredentials(
+    deploymentType: DeploymentType,
     targetStage: string | undefined = undefined,
     doForce: boolean = false,
   ): boolean {
@@ -200,7 +204,7 @@ export class ValidateEnvironment {
 
     const targetDtEnvFile = Configuration.dtEnvFile
 
-    const exampleDtEnvFile = path.join(__dirname, "../templates/environments/.env.dt.stage-example")
+    const exampleDtEnvFile = path.join(__dirname, `../templates/environments/${deploymentType}/.env.dt.stage-example`)
 
     let dtEnvConfig: Record<string, string>
     try {

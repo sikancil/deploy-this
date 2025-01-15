@@ -1,59 +1,53 @@
 resource "aws_cloudwatch_log_group" "io_template_service_log" {
-    name = "/ecs/io_template_service-stg-log-group"
-
-     retention_in_days = 7
+  name              = var.log_group_name
+  retention_in_days = 7
 }
 
-# Create New Subnet 1
 resource "aws_subnet" "main_ecs_stg_1" {
   vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.0.1.0/24"
-  availability_zone       = "us-west-2a"
+  cidr_block              = var.subnet_1_cidr
+  availability_zone       = var.availability_zone_1
   map_public_ip_on_launch = true
-  tags                    = {
-    Name = "${var.project_name} - subnet ECS STG 1"
+  tags = {
+    Name = "${var.project_name} - subnet ECS 1"
   }
 }
 
-# Create New Subnet 2
 resource "aws_subnet" "main_ecs_stg_2" {
   vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.0.2.0/24"
-  availability_zone       = "us-west-2b"
+  cidr_block              = var.subnet_2_cidr
+  availability_zone       = var.availability_zone_2
   map_public_ip_on_launch = true
-  tags                    = {
-    Name = "${var.project_name} - subnet ECS STG 2"
+  tags = {
+    Name = "${var.project_name} - subnet ECS 2"
   }
 }
 
-# Create Route Table
 resource "aws_route_table" "main" {
   vpc_id = aws_vpc.main.id
 
   route {
-    cidr_block = "0.0.0.0/0"
+    cidr_block = var.route_table_cidr
     gateway_id = aws_internet_gateway.main.id
   }
 
   tags = {
-    Name = "${var.project_name} - route-table ECS IO SBX"
+    Name = "${var.project_name} - ECS route-table"
   }
 }
 
-# Associate Route Table with Subnet
 resource "aws_route_table_association" "rta_io_1" {
   subnet_id      = aws_subnet.main_ecs_stg_1.id
   route_table_id = aws_route_table.main.id
 }
 
-# Associate Route Table with Subnet
 resource "aws_route_table_association" "rta_io_2" {
   subnet_id      = aws_subnet.main_ecs_stg_2.id
   route_table_id = aws_route_table.main.id
 }
 
 resource "aws_iam_role" "ecs_task_execution" {
-  name = "ecsTaskExecutionRoleAdminStg"
+  name = var.ecs_task_execution_role_name
 
   assume_role_policy = jsonencode({
     Version   = "2012-10-17",
@@ -75,7 +69,7 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution_policy" {
 }
 
 resource "aws_ecs_task_definition" "io_template_task" {
-  family                   = "io-template-task-stg"
+  family                   = var.ecs_task_family
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
   cpu                      = "256"
@@ -83,8 +77,8 @@ resource "aws_ecs_task_definition" "io_template_task" {
   execution_role_arn       = aws_iam_role.ecs_task_execution.arn
   container_definitions    = jsonencode([
     {
-      "name" : "io-template-container",
-      "image" : "180088340548.dkr.ecr.us-west-2.amazonaws.com/example-rest:804414086a3ba7b0b32ef6917ebdd534f4de1c22",
+      "name" : var.container_name,
+      "image" : var.container_image,
       "essential" : true,
       "portMappings" : [
         {
@@ -93,24 +87,23 @@ resource "aws_ecs_task_definition" "io_template_task" {
         }
       ],
       "environment" : [
-        { "name" : "SERVICE_NAME", "value" : "io_service" },
-        { "name" : "DB_CLIENT", "value" : "mysql" },
-        { "name" : "DB_HOST", "value" : "localhost" },
-        { "name" : "DB_PORT", "value" : "3306" },
-        { "name" : "DB_DATABASE", "value" : "test" },
-        { "name" : "DB_USER", "value" : "root" }
+        { "name" : "SERVICE_NAME", "value" : var.service_name },
+        { "name" : "DB_CLIENT", "value" : var.db_client },
+        { "name" : "DB_HOST", "value" : var.db_host },
+        { "name" : "DB_PORT", "value" : var.db_port },
+        { "name" : "DB_DATABASE", "value" : var.db_database },
+        { "name" : "DB_USER", "value" : var.db_user }
       ]
     }
-  ]
-  )
+  ])
 
   tags = {
-    Name = "${var.project_name} - IO-TEMPLATE-STG"
+    Name = "${var.project_name} task"
   }
 }
 
 resource "aws_ecs_service" "io_template_service" {
-  name            = "io-template-service"
+  name            = var.ecs_service_name
   cluster         = aws_ecs_cluster.main_cluster.id
   task_definition = aws_ecs_task_definition.io_template_task.arn
   desired_count   = 1
@@ -124,18 +117,17 @@ resource "aws_ecs_service" "io_template_service" {
 
   load_balancer {
     target_group_arn = aws_lb_target_group.io_template_target_group.arn
-    container_name   = "io-template-container"
+    container_name   = var.container_name
     container_port   = 3000
   }
 
   tags = {
-    Name = "${var.project_name} - IO-TEMPLATE-STG"
+    Name = "${var.project_name} service"
   }
 }
 
-
 resource "aws_security_group" "ecs_sg_io_template_stg" {
-  name        = "ecs_sg_io_template_stg"
+  name        = var.ecs_sg_io_template_stg
   description = "STG Security group for ECS service"
   vpc_id      = aws_vpc.main.id
 
@@ -154,13 +146,12 @@ resource "aws_security_group" "ecs_sg_io_template_stg" {
   }
 
   tags = {
-    Name = "${var.project_name} - IO-TEMPLATE-STG"
+    Name = "${var.project_name} ECS SG"
   }
 }
 
-#ALB SETUP
-resource "aws_security_group" "alb_sg_io_template_stg" {
-  name        = "alb_sg_io_template_stg"
+resource "aws_security_group" "alb_sg_io_template" {
+  name        = var.alb_sg_io_template
   description = "Allow inbound traffic to ALB"
   vpc_id      = aws_vpc.main.id
 
@@ -175,7 +166,7 @@ resource "aws_security_group" "alb_sg_io_template_stg" {
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
-    cidr_blocks = ["108.137.125.145/32"]
+    cidr_blocks = [var.alb_sg_ingress_ip]
   }
 
   egress {
@@ -186,28 +177,27 @@ resource "aws_security_group" "alb_sg_io_template_stg" {
   }
 
   tags = {
-    Name = "${var.project_name} - IO-TEMPLATE-STG"
+    Name = "${var.project_name} ECS SG ALB"
   }
 }
 
 resource "aws_lb" "io_template_stg_alb" {
-  name               = "io-template-stg-alb"
+  name               = var.alb_name
   internal           = false
   load_balancer_type = "application"
-  security_groups    = [aws_security_group.alb_sg_io_template_stg.id]
+  security_groups    = [aws_security_group.alb_sg_io_template.id]
   subnets            = [aws_subnet.main_ecs_stg_1.id, aws_subnet.main_ecs_stg_2.id]
 
   enable_deletion_protection       = false
   enable_cross_zone_load_balancing = true
-  #idle_timeout               = 5
 
   tags = {
-    Name = "${var.project_name} - IO-TEMPLATE-STG"
+    Name = "${var.project_name} ECS ALB"
   }
 }
 
 resource "aws_lb_target_group" "io_template_target_group" {
-  name        = "io-template-target-group-stg"
+  name        = var.target_group_name
   port        = 3000
   protocol    = "HTTP"
   vpc_id      = aws_vpc.main.id
@@ -222,7 +212,7 @@ resource "aws_lb_target_group" "io_template_target_group" {
   }
 
   tags = {
-    Name = "${var.project_name} - IO-TEMPLATE-STG"
+    Name = "${var.project_name} ECS Target LB"
   }
 }
 
@@ -236,10 +226,7 @@ resource "aws_lb_listener" "http" {
     target_group_arn = aws_lb_target_group.io_template_target_group.arn
   }
 
-  #certificate_arn = "${var.ssl}"
-
   tags = {
-    Name = "${var.project_name} - IO-TEMPLATE-STG"
+    Name = "${var.project_name} ECS"
   }
 }
-

@@ -68,6 +68,24 @@ export class Configuration {
     "AWS_ACCESS_KEY",
     "AWS_SECRET_KEY",
     "AWS_ACCOUNT_ID",
+    "ECR_REGISTRY",
+    "ECR_REPOSITORY_NAME",
+    "EXECUTION_ROLE_ARN"
+  ]
+
+  static readonly gitopsAllowedRepoVariables = [
+    "PROJECT_NAME",
+  ]
+
+  static readonly gitopsAllowedDeploymentVariables = [
+    "NODE_ENV",
+    "DEPLOYMENT_TYPE",
+    "AWS_PROFILE",
+    "AWS_REGION",
+    "AWS_ACCESS_KEY",
+    "AWS_SECRET_KEY",
+    "AWS_ACCOUNT_ID",
+    "ECR_URL"
   ]
 
   static readonly projectRoot: string = process.cwd()

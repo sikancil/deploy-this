@@ -18,6 +18,7 @@
     "lint:fix": "eslint 'src/**/*.ts' --fix",
     "precommit": "npm run format ; npm run lint",
     "dev": "./pre-exec.script.js ; ts-node src/index.ts",
+    "dev:ecs": "npm run dev init -- --force",
     "debug": "DEBUG=1 ts-node src/index.ts",
     "start": "node dist/index.js",
     "watch": "tsc -w",

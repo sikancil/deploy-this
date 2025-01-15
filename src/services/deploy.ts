@@ -7,6 +7,7 @@ import { ObjectType } from "../utils/object"
 import { ShellPrompts } from "../utils/shell.prompts"
 import { Validation } from "../utils/validation"
 import { Configuration } from "../utils/configuration"
+import {DeploymentType} from "../interfaces/common";
 
 // Deploy class handles the deployment of infrastructure using Terraform.
 // NOTE: It interacts with environment variables, Terraform state files, and executes Terraform commands.
@@ -220,6 +221,8 @@ export class Deploy {
       this.runApply(force)
       console.log()
 
+      this.runJsonOutput()
+      console.log()
       // Shows the Terraform status.
       // this.runStatus()
       // console.log()
@@ -379,6 +382,26 @@ export class Deploy {
         console.error("❗️ Error showing Terraform resources:", (error as Error).message)
       } else {
         console.error("❗️ Unknown error showing Terraform resources:", (error as Buffer).toString())
+      }
+    }
+  }
+
+  public runJsonOutput(): void {
+    if(this.deploymentType == DeploymentType.ECS ){
+      try {
+        console.log("Showing Terraform json output...") // NOTE: Added more descriptive message.
+        const buff = execSync(`terraform output -json`, { stdio: "inherit" })
+        const jsonOutput = JSON.parse(buff.toString())
+        Configuration.updateEnvFile(this.targetEnvironment, {
+          ECS_EXECUTION_ROLE_ARN: jsonOutput?.iam_role_ecs_task_execution_arn?.value,
+          ECS_IO_SERVICE: jsonOutput?.ecs_service_name?.value,
+        })
+      } catch (error) {
+        if (error instanceof Error) {
+          console.error("❗️ Error showing Terraform json output:", (error as Error).message)
+        } else {
+          console.error("❗️ Unknown error showing Terraform json output:", (error as Buffer).toString())
+        }
       }
     }
   }

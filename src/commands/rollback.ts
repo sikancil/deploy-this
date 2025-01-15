@@ -4,9 +4,10 @@ import { ObjectType } from "../utils/object"
 import { handleError } from "../utils/error.handler"
 import { ShellPrompts } from "./../utils/shell.prompts"
 import { Validation } from "./../utils/validation"
-import { DestroyType } from "../interfaces/common"
+import {DeploymentType, DestroyType} from "../interfaces/common"
 
 export async function run(
+  deploymentType: DeploymentType,
   targetEnvironment?: string,
   destroyType?: string,
   force: boolean = false,
@@ -18,7 +19,7 @@ export async function run(
     // Validate the target environment or use a default if not provided
     const validateEnvironment = new ValidateEnvironment(projectRoot)
     targetEnvironment =
-      targetEnvironment || (await validateEnvironment.validates(targetEnvironment, false))
+      targetEnvironment || (await validateEnvironment.validates(deploymentType, targetEnvironment, false))
 
     console.info(`🌥️ Target environment: ${targetEnvironment}\n`)
 

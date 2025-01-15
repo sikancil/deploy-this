@@ -14,6 +14,7 @@ import { run as cmdVersion } from "./commands/version"
 import { run as cmdBitbucket } from "./commands/bitbucket"
 
 import { ObjectType } from "./utils/object"
+import {DeploymentType} from "./interfaces/common";
 
 // Create a new command-line interface (CLI) program
 const program = new Command()
@@ -82,11 +83,11 @@ program
 
 // Define the 'validate' command for validating current setup
 program
-  .command("validate")
+  .command("validate [deploymentType]")
   .description("Validate current setup")
-  .action(async () => {
+  .action(async (deploymentType: DeploymentType) => {
     try {
-      await cmdValidate()
+      await cmdValidate(deploymentType)
     } catch (error) {
       handleError(`Error validating setup.`, error)
     }
@@ -106,10 +107,10 @@ program
 
 // Define the 'rollback' command for rolling back infrastructure
 program
-  .command("rollback [targetEnvironment] [destroyOptions]")
+  .command("rollback [targetEnvironment] [deploymentType] [destroyOptions]")
   .option("-f, --force", "Force destroying deployed resources")
   .description("Rollback infrastructure")
-  .action(async (targetEnvironment, destroyOptions, args) => {
+  .action(async (targetEnvironment, deploymentType, destroyOptions, args) => {
     // Determine if the force flag is set
     const doForce = args?.force === true
     try {
@@ -120,7 +121,7 @@ program
       }
 
       // Run the rollback command
-      await cmdRollback(targetEnvironment, destroyOptions, doForce)
+      await cmdRollback(deploymentType, targetEnvironment, destroyOptions, doForce)
     } catch (error) {
       handleError(`Error during rollback.`, error)
     }

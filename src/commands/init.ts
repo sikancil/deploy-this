@@ -3,6 +3,8 @@ import { ValidateEnvironment } from "../services/validate"
 import { Init } from "../services/init"
 // Import the prompts library for user interaction.  This allows the command to prompt the user for input.
 import prompts from "prompts"
+import {DeploymentType} from "../interfaces/common";
+import {ShellPrompts} from "../utils/shell.prompts";
 
 // This function is the main entry point for the 'init' command. It takes optional parameters for target environment, deployment type, and a force flag.
 // It returns a Promise that resolves when the initialization is complete.
@@ -13,11 +15,13 @@ export async function run(
 ): Promise<void> {
   // Get the current working directory, which is assumed to be the root of the project.
   const projectRoot = process.cwd()
+  deploymentType = await ShellPrompts.selectDeploymentType(deploymentType)
+
 
   // Validate the target environment or use a default if not provided
   const validateEnvironment = new ValidateEnvironment(projectRoot)
   targetEnvironment =
-    targetEnvironment || (await validateEnvironment.validates(targetEnvironment, force))
+    targetEnvironment || (await validateEnvironment.validates(deploymentType as DeploymentType, targetEnvironment , force))
 
   console.info(`🌥️ Target environment: ${targetEnvironment}\n`)
 

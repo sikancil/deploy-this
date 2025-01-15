@@ -59,6 +59,8 @@ dt <command> [options]
 1. **init**: Initialize the project configuration
    ```
    dt init [targetEnvironment] [deploymentType]
+   dt init [targetEnvironment] [deploymentType] -f | --force
+
    ```
 
 2. **deploy**: Deploy infrastructure
