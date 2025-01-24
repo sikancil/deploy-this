@@ -3,6 +3,7 @@
 import axios, { AxiosInstance } from "axios"
 import { UUID, isUUID } from "../utils/uuid"
 import { Configuration } from "../utils/configuration"
+import _ from "lodash";
 
 // Interfaces
 export interface BitbucketAuth {
@@ -169,7 +170,7 @@ export class BitbucketService {
       const responses = await Promise.all(
         stages.map(async (envStage) => {
           const response = await this.client.get(
-            `/repositories/${this.config.workspace}/${this.config.repoSlug}/deployments_config/environments/${encodeURIComponent(envStage.uuid)}/variables`,
+            `/repositories/${this.config.workspace}/${this.config.repoSlug}/deployments_config/environments/${encodeURIComponent(envStage.uuid)}/variables?page=1&pagelen=100`,
           )
           return {
             scope: VariableScope.DEPLOYMENT,
@@ -314,22 +315,22 @@ export class BitbucketService {
           const result = await this.client.put(`${baseUrl}/${existingVar.uuid}`, payload)
           console.log(
             result
-              ? `✅ Set Repository Variable ${variable.key}`
+              ? `✅ Set Exist Repository Variable ${variable.key}`
               : `❌ Failed to set Repository Variable ${variable.key}`,
           )
         } else {
           const result = await this.client.post(baseUrl, payload)
           console.log(
             result
-              ? `✅ Set Repository Variable ${variable.key}`
+              ? `✅ Set New Repository Variable ${variable.key}`
               : `❌ Failed to set Repository Variable ${variable.key}`,
           )
         }
       } else if (options.scope === VariableScope.DEPLOYMENT) {
-        if (!this.allowedVariables.includes(variable.key)) {
-          console.warn(`❗️ WARN: Filter Unnecessary Variable ${variable.key}`)
-          return
-        }
+        // if (!this.allowedVariables.includes(variable.key)) {
+        //   console.warn(`❗️ WARN: Filter Unnecessary Variable ${variable.key}`)
+        //   return
+        // }
 
         // Upsert deployment variables only
         const existingVar: BitbucketVariable = Object.keys(
@@ -348,14 +349,14 @@ export class BitbucketService {
           const result = await this.client.put(`${baseUrl}/${existingVar.uuid}`, payload)
           console.log(
             result
-              ? `✅ Set Deployment Variable ${variable.key}`
+              ? `✅ Set Exist Deployment Variable ${variable.key}`
               : `❌ Failed to set Deployment Variable ${variable.key}`,
           )
         } else {
           const result = await this.client.post(baseUrl, payload)
           console.log(
             result
-              ? `✅ Set Deployment Variable ${variable.key}`
+              ? `✅ Set New Deployment Variable ${variable.key}`
               : `❌ Failed to set Deployment Variable ${variable.key}`,
           )
         }
@@ -450,6 +451,9 @@ export class BitbucketService {
   ): Promise<void> {
     try {
       const existingVariables = await this.listVariables({ scope: undefined, stage: stage })
+      if(variables.DEPLOYMENT_TYPE == "ecs") {
+        variables =  _.pick(variables, Configuration.gitopsAllowedEcsDeploymentVariables)
+      }
 
       const entries = Object.entries(variables)
 
@@ -457,10 +461,10 @@ export class BitbucketService {
         // Skip empty or undefined values
         if (!value) continue
 
-        if (!this.allowedVariables.includes(key)) {
-          console.warn(`❗️ WARN: Filter Unnecessary Variable ${key}`)
-          continue
-        }
+        // if (!this.allowedVariables.includes(key)) {
+        //   console.warn(`❗️ WARN: Filter Unnecessary Variable ${key}`)
+        //   continue
+        // }
 
         // Check if variable exists in deployments
         const existingVarInDeployments: BitbucketVariable = Object.keys(
@@ -493,14 +497,14 @@ export class BitbucketService {
         // Set as repository variable if it's a global config
         if (key === "PROJECT_NAME" || key === "DEPLOYER") {
           variable.type = "pipeline_variable"
-          await this.ensureVariable(existingVarInRepository ? existingVarInRepository : variable, {
+          await this.ensureVariable(existingVarInRepository ? modifyExistVar(existingVarInDeployments, variable) : variable, {
             scope: VariableScope.REPOSITORY,
           })
         } else {
           // Set as deployment variable for both staging and production
           variable.type = "pipeline_variable"
           await this.ensureVariable(
-            existingVarInDeployments ? existingVarInDeployments : variable,
+            existingVarInDeployments ? modifyExistVar(existingVarInDeployments, variable) : variable,
             { scope: VariableScope.DEPLOYMENT, stage: stage || "test" },
           )
         }
@@ -510,4 +514,9 @@ export class BitbucketService {
       throw error
     }
   }
+}
+
+function modifyExistVar(existingVarInDeployments, variable){
+  existingVarInDeployments.value = variable.value
+  return existingVarInDeployments
 }

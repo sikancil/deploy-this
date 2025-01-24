@@ -8,12 +8,13 @@
     "iodt": "dist/index.js"
   },
   "scripts": {
-    "build:variables": "mkdirp dist/templates/environments ; copyfiles -u 1 \"src/templates/environments/.*\" dist",
+    "build:variables": "mkdirp dist/templates/environments ; copyfiles -u 1 \"src/templates/environments/**/.*\" dist",
     "build:terraforms": "mkdirp dist/templates/terraforms ; copyfiles -u 1 \"src/templates/terraforms/**/*\" dist",
     "build:templates": "npm run build:variables ; npm run build:terraforms",
     "chmod:bin": "chmod-cli ./dist/index.js -m 0o755",
     "build": "rimraf ./dist/ ; tsc",
     "format": "prettier --write 'src/**/*.ts'",
+    "pipelines": "npm run dev pipelines variables init",
     "lint": "eslint 'src/**/*.ts'",
     "lint:fix": "eslint 'src/**/*.ts' --fix",
     "precommit": "npm run format ; npm run lint",

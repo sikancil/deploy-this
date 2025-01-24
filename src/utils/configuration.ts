@@ -88,6 +88,20 @@ export class Configuration {
     "ECR_URL"
   ]
 
+  static readonly gitopsAllowedEcsDeploymentVariables = [
+    "NODE_ENV",
+    "DOCKERHUB_AWS_USERNAME",
+    "ECR_REGISTRY",
+    "ECR_REPOSITORY_NAME",
+    "AWS_PROFILE",
+    "AWS_REGION",
+    "AWS_ACCESS_KEY",
+    "AWS_SECRET_KEY",
+    "ECR_URL",
+    "ECS_IO_SERVICE",
+    "ECS_EXECUTION_ROLE_ARN"
+  ]
+
   static readonly projectRoot: string = process.cwd()
   static get envFile(): string {
     return path.join(this.projectRoot, ".env")
